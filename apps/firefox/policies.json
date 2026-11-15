@@ -1,0 +1,37 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DisablePocket": true,
+    "DisableFeedbackCommands": true,
+    "DisableSetDesktopBackground": true,
+    "DontCheckDefaultBrowser": true,
+    "NoDefaultBookmarks": true,
+    "OfferToSaveLogins": false,
+    "PasswordManagerEnabled": false,
+    "SearchSuggestEnabled": false,
+    "NetworkPrediction": false,
+    "CaptivePortal": false,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "ExtensionUpdate": false,
+    "AppAutoUpdate": false,
+    "DisableAppUpdate": true,
+    "Preferences": {
+      "browser.startup.homepage": "about:blank",
+      "browser.newtabpage.enabled": false,
+      "toolkit.telemetry.enabled": false,
+      "datareporting.healthreport.uploadEnabled": false,
+      "app.shield.optoutstudies.enabled": false,
+      "browser.discovery.enabled": false,
+      "browser.tabs.firefox-view": false,
+      "browser.ml.chat.enabled": false,
+      "browser.ml.linkPreview.enabled": false,
+      "extensions.getAddons.showPane": false,
+      "widget.use-xdg-desktop-portal.file-picker": 1,
+      "layers.acceleration.force-enabled": true,
+      "gfx.webrender.all": true,
+      "media.ffmpeg.vaapi.enabled": true
+    }
+  }
+}

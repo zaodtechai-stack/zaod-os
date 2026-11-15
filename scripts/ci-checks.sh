@@ -31,6 +31,9 @@ python3 tests/check_boot_config.py
 printf '\n== desktop session configuration ==\n'
 python3 tests/check_desktop_config.py
 
+printf '\n== app packaging and store ==\n'
+python3 tests/check_apps_config.py
+
 printf '\n== vendor asset scan ==\n'
 python3 desktop/design/tools/scan_assets.py
 

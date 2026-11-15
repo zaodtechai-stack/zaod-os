@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs rootfs-check desktop design apps initramfs iso usb boot zaod test clean
+.PHONY: help doctor fetch firmware kernel rootfs rootfs-check desktop design firefox repo apps initramfs iso usb boot zaod test clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -12,7 +12,9 @@ help:
 	  '  rootfs-check - validate the rootfs inputs without building' \
 	  '  desktop - install and validate the Plasma session configuration' \
 	  '  design  - regenerate and verify the design system artefacts' \
-	  '  apps    - build Zaod applications (not implemented yet)' \
+	  '  apps    - validate the app packaging and the signed store' \
+	  '  firefox - build the Firefox ESR .zaod package' \
+	  '  repo    - build and sign the store index' \
 	  '  initramfs - verify the live-boot initramfs inputs' \
 	  '  iso     - assemble the hybrid UEFI/BIOS ISO' \
 	  '  usb     - usage reminder for writing an ISO to a USB device' \
@@ -57,8 +59,15 @@ design:
 	@python3 desktop/design/tools/scan_assets.py
 
 apps:
-	@printf 'Target "apps" is not implemented yet.\n' >&2
-	@exit 2
+	@python3 tests/check_apps_config.py
+	@bash apps/firefox/build-firefox-zaod.sh --check
+	@bash scripts/build-repo.sh --check
+
+firefox:
+	@bash apps/firefox/build-firefox-zaod.sh
+
+repo:
+	@bash scripts/build-repo.sh
 
 initramfs:
 	@bash scripts/make-initramfs.sh --check

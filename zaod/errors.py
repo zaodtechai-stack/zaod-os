@@ -59,6 +59,12 @@ class InstallError(ZaodError):
     """The install/remove/update transaction failed."""
 
 
+class NetworkError(ZaodError):
+    """A store or mirror could not be reached."""
+
+    exit_code = 6
+
+
 class RepoError(ZaodError):
     """A repository is unknown, unreachable or serves an invalid index."""
 

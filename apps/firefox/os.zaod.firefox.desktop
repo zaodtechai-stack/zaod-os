@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Firefox
+GenericName=Web Browser
+Comment=Browse the web
+Exec=payload/firefox/firefox %u
+Icon=os.zaod.firefox
+Terminal=false
+StartupNotify=true
+StartupWMClass=firefox
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+X-Zaod-Package=os.zaod.firefox
+X-Zaod-Sandbox=strict
