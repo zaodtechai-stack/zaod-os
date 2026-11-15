@@ -1,0 +1,132 @@
+# Zaod OS base system packages, Debian trixie.
+#
+# Grouped by purpose. Everything here is required for the supported desktop or
+# for the system to boot; nothing is pulled in "for convenience". Packages that
+# only exist for the Debian package manager are deliberately absent from the
+# install set and removed in the final stage instead (see rootfs.remove.list),
+# because the desktop packages depend on a few of their libraries.
+
+## init, service management, logging
+systemd
+systemd-sysv
+systemd-resolved
+systemd-timesyncd
+dbus
+dbus-user-session
+udev
+kmod
+procps
+psmisc
+e2fsprogs
+util-linux
+kbd
+console-setup
+locales
+tzdata
+
+## boot and storage
+grub-common
+grub-pc-bin
+grub-efi-amd64-bin
+efibootmgr
+squashfs-tools
+zstd
+xz-utils
+parted
+mtools
+dosfstools
+cryptsetup
+lvm2
+mdadm
+
+## networking
+network-manager
+wpasupplicant
+bluez
+bluez-firmware
+iw
+iproute2
+iputils-ping
+netbase
+ca-certificates
+curl
+
+## audio and video plumbing
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+alsa-ucm-conf
+libspa-0.2-bluetooth
+gstreamer1.0-pipewire
+
+## graphics and input
+mesa-vulkan-drivers
+libgl1-mesa-dri
+libglx-mesa0
+libegl-mesa0
+libinput10
+libinput-tools
+xwayland
+xserver-xorg-core
+
+## desktop
+plasma-desktop
+plasma-workspace
+plasma-workspace-wayland
+plasma-nm
+plasma-pa
+plasma-discover
+sddm
+kwin-wayland
+kwin-x11
+kscreen
+kscreenlocker
+kde-cli-tools
+kio
+kio-extras
+dolphin
+konsole
+kwalletmanager
+breeze-gtk-theme
+qt6-wayland
+qt6ct
+xdg-desktop-portal
+xdg-desktop-portal-kde
+polkit-kde-agent-1
+powerdevil
+upower
+
+## session helpers
+polkitd
+pkexec
+bubblewrap
+xdg-utils
+desktop-file-utils
+shared-mime-info
+fonts-inter
+fonts-noto-core
+fonts-noto-mono
+fonts-jetbrains-mono
+
+## memory and pressure handling
+zram-generator
+earlyoom
+systemd-oomd
+
+## runtime for the Zaod tooling
+python3
+python3-pyqt6
+python3-pyqt6-svg
+python3-dbus
+python3-gi
+python3-pip
+python3-venv
+
+## console and small utilities
+nano
+less
+bash-completion
+usbutils
+pciutils
+rfkill

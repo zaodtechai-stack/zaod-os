@@ -1,0 +1,4 @@
+# The first user may administer the machine with a password, and only then.
+%wheel ALL=(ALL:ALL) ALL
+Defaults:%wheel timestamp_timeout=5
+Defaults:%wheel !lecture

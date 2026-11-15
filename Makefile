@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop design apps initramfs iso usb boot zaod test clean
+.PHONY: help doctor fetch firmware kernel rootfs rootfs-check desktop design apps initramfs iso usb boot zaod test clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -8,7 +8,8 @@ help:
 	  '  fetch   - download and verify the pinned kernel source tarball' \
 	  '  firmware - package selected, pinned Linux firmware' \
 	  '  kernel  - build the Zaod kernel and firmware bundle' \
-	  '  rootfs  - build the minimal Debian trixie tarball evidence artifact' \
+	  '  rootfs  - build the Zaod root filesystem and squashfs image' \
+	  '  rootfs-check - validate the rootfs inputs without building' \
 	  '  desktop - install and validate the Plasma session configuration' \
 	  '  design  - regenerate and verify the design system artefacts' \
 	  '  apps    - build Zaod applications (not implemented yet)' \
@@ -31,6 +32,10 @@ fetch:
 rootfs:
 	@mkdir -p build/out
 	@bash scripts/build-rootfs.sh
+
+rootfs-check:
+	@bash scripts/build-rootfs.sh --check
+	@python3 tests/check_rootfs_config.py
 
 firmware:
 	@bash scripts/build-firmware.sh
