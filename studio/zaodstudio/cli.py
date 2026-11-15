@@ -6,6 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from zaodlib.errors import ZaodError
+
 from .project import (
     ProjectError,
     build_project,
@@ -113,6 +115,11 @@ def main(argv: list[str] | None = None) -> int:
     except ProjectError as error:
         print(f"zaod-studio: {error}", file=sys.stderr)
         return 2
+    except ZaodError as error:
+        # Package-level failures (bad signature, incompatible target, broken
+        # archive) must read as one line, not as a Python traceback.
+        print(f"zaod-studio: error: {error}", file=sys.stderr)
+        return error.exit_code
 
 
 if __name__ == "__main__":

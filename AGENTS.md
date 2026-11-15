@@ -18,7 +18,7 @@ Work on `main` only, and never revert or rewrite another agent's phase.
 | 6 | Zaod Fluent design system | not implemented | no tokens, no theme, no screenshots |
 | 7 | `.zaod` format and package manager | done (one gap) | `make zaod-test` (97 tests), `make hello` |
 | 8 | Core apps, Firefox ESR, Store, Control Center | built, partly unverified | `make apps` (13 packages), `make firefox`, `make store-index`, `make smoke` |
-| 9 | Zaod Studio and project templates | built | `make studio`, `make studio-test` (16 tests) |
+| 9 | Zaod Studio and project templates | done (window launch unverified) | `make studio-test` (16 tests); all five templates build byte-reproducibly, `verify --strict`, and install |
 | 10 | Installer, OOBE, updates, release | tooling built, image blocked | `make zaod-test` incl. 9 bundle tests, `apps/oobe`, `installer/`, `make store-release`, `docs/reports/phase-10.md` |
 
 Test totals today: 97 package-manager + 9 update-bundle + 43 application + 16 Studio = **165 tests**.
@@ -42,9 +42,9 @@ Test totals today: 97 package-manager + 9 update-bundle + 43 application + 16 St
 4. **Phase 8 Control Center is unverified on a real session.** The window paints and
    the settings backend is unit tested, but "each control changes a real system
    setting" needs a live Plasma session from Phase 5.
-5. **Phase 9 install path is unverified in QEMU.** Templates build and the Studio
-   suite passes; "install offline from a local repo in QEMU and launch all five
-   templates" needs the Phase 3/4 image.
+5. **Phase 9 window launch is unverified.** Templates build byte-reproducibly, pass
+   `zaod-studio verify --strict` and install into a scratch root, but `zaod run`
+   cannot start here because the sandbox denies network namespaces.
 
 ## How to check the repository in one pass
 
@@ -133,3 +133,20 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
 - Not verified here: Store install/update/remove against a hosted repo on a real
   image, Firefox three-tab behaviour on 2 GB, template install in QEMU, Studio
   absent-by-default on the shipped image.
+
+### 2026-11-15: phases 8 and 9 exercised end to end (second pass)
+
+- Store round trip on a scratch `ZAOD_ROOT`: `repo add file://... --key`, `repo sync`
+  cached 14 packages, `search`, then `install org.zaod.notes` resolved the signed
+  index and recorded `source: repo:core`; `remove` left nothing behind.
+- Phase 9: all five templates (`python-qt`, `python-cli`, `c-cmake`, `shell`,
+  `web-wrapper`) scaffold, build twice to the **same sha256**, pass
+  `zaod-studio verify --strict` with a trusted developer key, and install.
+- **Bug fixed: every Studio-built package was uninstallable.** `zaodstudio` stamped
+  `min_os` 0.9.0 while the platform is 0.7.0, so `zaod verify`/`install` rejected all
+  Studio output with a `CompatibilityError`. The default now comes from
+  `zaodlib.DEFAULT_OS_VERSION`; a project can still raise it in `zaod.project.json`.
+- **Bug fixed: `zaod-studio` leaked Python tracebacks** for package-level failures.
+  It now prints one `zaod-studio: error: ...` line and returns the error's exit code.
+- Still open here: `zaod run` cannot execute (bwrap cannot create a network namespace
+  in this sandbox), so window launch stays a real-image check.

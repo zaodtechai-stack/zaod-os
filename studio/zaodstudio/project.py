@@ -26,7 +26,7 @@ for candidate in (REPO_ROOT / "zaod", Path("/usr/lib/zaod")):
         sys.path.insert(0, str(candidate))
         break
 
-from zaodlib import keys, pack
+from zaodlib import DEFAULT_OS_VERSION, keys, pack
 from zaodlib import manifest as manifest_module
 from zaodlib.errors import ZaodError
 
@@ -184,7 +184,9 @@ def generate_manifest(project: Project) -> dict:
         "version": project.version,
         "kind": data.get("kind", "app"),
         "arch": data.get("arch", "x86_64"),
-        "min_os": data.get("min_os", "0.9.0"),
+        # Default to the OS release this toolkit targets, so a project built
+        # here stays installable on the platform that ships it.
+        "min_os": data.get("min_os", DEFAULT_OS_VERSION),
         "summary": data.get("summary") or f"{project.name} built with Zaod Studio",
         "description": data.get("description") or template.summary,
         "categories": data.get("categories") or ["Utility"],
