@@ -1,0 +1,93 @@
+/* GENERATED FILE - do not edit.
+ * Source: desktop/design/tokens/tokens.json
+ * Generator: desktop/design/tools/tokens_to_css.py
+ * Theme: dark
+ */
+
+@define-color zaod_background #14161A;
+@define-color zaod_surface #1B1E23;
+@define-color zaod_surface-alt #23272E;
+@define-color zaod_surface-raised #282D35;
+@define-color zaod_surface-overlay #2E343D;
+@define-color zaod_border #626C7B;
+@define-color zaod_border-strong #8A93A0;
+@define-color zaod_text-primary #F2F4F7;
+@define-color zaod_text-secondary #B4BCC8;
+@define-color zaod_text-tertiary #9CA6B3;
+@define-color zaod_text-disabled #6C7684;
+@define-color zaod_accent #4CC2FF;
+@define-color zaod_accent-hover #6BCEFF;
+@define-color zaod_accent-pressed #8AD8FF;
+@define-color zaod_accent-subtle #16303F;
+@define-color zaod_on-accent #101418;
+@define-color zaod_danger #FFB4AB;
+@define-color zaod_on-danger #3B0906;
+@define-color zaod_success #7DDC9B;
+@define-color zaod_warning #F5C451;
+@define-color zaod_focus-ring #4CC2FF;
+@define-color zaod_shadow #000000;
+@define-color zaod_scrim #000000;
+
+/* spacing grid: 4 px */
+
+
+* {
+  font-family: "Inter",
+               "Noto Sans", sans-serif;
+  font-size: 14pt;
+  color: @zaod_text-primary;
+  background-color: @zaod_background;
+}
+
+window, dialog, popover, menu {
+  background-color: @zaod_surface;
+  color: @zaod_text-primary;
+  border-radius: 12px;
+}
+
+headerbar, .titlebar {
+  background-color: @zaod_surface-alt;
+  border-bottom: 1px solid @zaod_border;
+  padding: 8px 12px;
+}
+
+button {
+  background-color: @zaod_surface-alt;
+  color: @zaod_text-primary;
+  border: 1px solid @zaod_border;
+  border-radius: 8px;
+  padding: 8px 16px;
+  min-height: 32px;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+button:hover { background-color: @zaod_accent-subtle; }
+button:active { background-color: @zaod_accent-subtle; border-color: @zaod_accent-pressed; }
+button:focus-visible { outline: 2px solid @zaod_focus-ring; outline-offset: 2px; }
+button.suggested-action { background-color: @zaod_accent; color: @zaod_on-accent; border-color: @zaod_accent; }
+button.destructive-action { background-color: @zaod_danger; color: @zaod_on-danger; border-color: @zaod_danger; }
+button:disabled { color: @zaod_text-disabled; }
+
+entry, spinbutton, textview, .view {
+  background-color: @zaod_surface;
+  color: @zaod_text-primary;
+  border: 1px solid @zaod_border;
+  border-radius: 8px;
+  padding: 8px 12px;
+  caret-color: @zaod_text-primary;
+}
+
+entry:focus, textview:focus { border-color: @zaod_focus-ring; }
+
+label:disabled, .dim-label { color: @zaod_text-secondary; }
+
+*:link, *:visited { color: @zaod_accent; }
+selection { background-color: @zaod_accent; color: @zaod_on-accent; }
+
+scrollbar slider { background-color: @zaod_border; border-radius: 999px; min-width: 8px; }
+scrollbar slider:hover { background-color: @zaod_border-strong; }
+
+switch { border-radius: 999px; border: 1px solid @zaod_border; }
+switch:checked { background-color: @zaod_accent; border-color: @zaod_accent; }
+progressbar progress { background-color: @zaod_accent; border-radius: 999px; }
+tooltip { background-color: @zaod_surface-overlay; color: @zaod_text-primary; border-radius: 8px; }

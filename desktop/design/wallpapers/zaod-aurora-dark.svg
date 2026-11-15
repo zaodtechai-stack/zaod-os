@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" width="2560" height="1440" shape-rendering="geometricPrecision">
+<title>Zaod OS Aurora (dark)</title>
+<desc>Original generative artwork generated from the Zaod Fluent design tokens.</desc>
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#14161A"/><stop offset="1" stop-color="#1B1E23"/></linearGradient>
+<radialGradient id="glow0" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#4CC2FF" stop-opacity="0.55"/><stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/></radialGradient>
+<radialGradient id="glow1" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#4CC2FF" stop-opacity="0.4"/><stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/></radialGradient>
+<radialGradient id="glow2" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#4CC2FF" stop-opacity="0.28"/><stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="2560" height="1440" fill="url(#sky)"/>
+<circle cx="716" cy="489" r="870" fill="url(#glow0)"/>
+<circle cx="1740" cy="864" r="1175" fill="url(#glow1)"/>
+<circle cx="1280" cy="1324" r="739" fill="url(#glow2)"/>
+<circle cx="1280" cy="633" r="873" fill="none" stroke="#4CC2FF" stroke-opacity="0.32" stroke-width="8"/>
+<circle cx="1280" cy="633" r="855" fill="none" stroke="#4CC2FF" stroke-opacity="0.26" stroke-width="6"/>
+<circle cx="1280" cy="633" r="849" fill="none" stroke="#4CC2FF" stroke-opacity="0.20" stroke-width="4"/>
+<circle cx="1280" cy="633" r="855" fill="none" stroke="#4CC2FF" stroke-opacity="0.14" stroke-width="4"/>
+<rect width="2560" height="1440" fill="#000000" opacity="0.18"/>
+</svg>

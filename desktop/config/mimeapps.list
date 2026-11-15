@@ -1,0 +1,15 @@
+[Default Applications]
+text/plain=org.zaod.textviewer.desktop
+text/markdown=org.zaod.textviewer.desktop
+inode/directory=org.kde.dolphin.desktop
+application/pdf=org.kde.okular.desktop
+image/png=org.kde.gwenview.desktop
+image/jpeg=org.kde.gwenview.desktop
+x-scheme-handler/http=org.zaod.firefox.desktop
+x-scheme-handler/https=org.zaod.firefox.desktop
+text/html=org.zaod.firefox.desktop
+application/x-zaod-package=org.zaod.store.desktop
+
+[Added Associations]
+text/plain=org.zaod.textviewer.desktop;org.kde.kate.desktop;
+inode/directory=org.kde.dolphin.desktop;
