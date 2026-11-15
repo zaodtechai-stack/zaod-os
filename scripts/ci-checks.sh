@@ -21,6 +21,9 @@ python3 desktop/design/tools/make_wallpapers.py --check
 printf '\n== design tokens and accessibility ==\n'
 python3 tests/check_design_tokens.py
 
+printf '\n== boot chain configuration ==\n'
+python3 tests/check_boot_config.py
+
 printf '\n== desktop session configuration ==\n'
 python3 tests/check_desktop_config.py
 

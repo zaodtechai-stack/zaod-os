@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Zaod OS
+Description=Original Zaod OS boot splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/zaod
+ScriptFile=/usr/share/plymouth/themes/zaod/zaod.script

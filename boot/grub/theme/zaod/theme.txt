@@ -1,0 +1,55 @@
+# Original Zaod OS GRUB theme: flat surfaces, the Zaod palette, no vendor art.
+
+title-text: ""
+desktop-color: "#101418"
+terminal-font: "Unifont Regular 16"
+terminal-left: "6%"
+terminal-top: "18%"
+terminal-width: "88%"
+terminal-height: "62%"
+terminal-border: "0"
+
++ boot_menu {
+  left = 8%
+  top = 30%
+  width = 60%
+  height = 46%
+  item_font = "Unifont Regular 16"
+  item_color = "#c7ccd1"
+  selected_item_color = "#f6f7f9"
+  item_height = 32
+  item_padding = 6
+  item_spacing = 4
+  selected_item_pixmap_style = "select_*.png"
+  scrollbar = false
+}
+
++ label {
+  left = 8%
+  top = 12%
+  width = 60%
+  align = "left"
+  color = "#f6f7f9"
+  font = "Unifont Regular 24"
+  text = "Zaod OS"
+}
+
++ label {
+  left = 8%
+  top = 22%
+  width = 60%
+  align = "left"
+  color = "#8b949c"
+  font = "Unifont Regular 16"
+  text = "Arrows to choose, Enter to start"
+}
+
++ label {
+  left = 0
+  top = 88%
+  width = 100%
+  align = "center"
+  color = "#6f7780"
+  font = "Unifont Regular 16"
+  text = "Nothing on this media is modified unless you choose Install"
+}

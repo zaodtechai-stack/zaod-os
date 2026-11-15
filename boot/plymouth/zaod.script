@@ -1,0 +1,103 @@
+# Zaod OS Plymouth splash.
+#
+# Original artwork only: every image is rendered by
+# boot/plymouth/tools/gen-assets.py. The script fades a vertical gradient in,
+# spins the eight-frame arc and fills a progress pill from left to right.
+
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+
+background_image = Image("background-" + screen_width + "x" + screen_height + ".png");
+if (background_image.GetWidth() == 0)
+  background_image = Image("background-1920x1080.png");
+
+background = Sprite(background_image);
+background.SetX(0);
+background.SetY(0);
+background.SetZ(-100);
+
+mark_image = Image("zaod-mark.png");
+mark_sprite = Sprite(mark_image);
+mark_sprite.SetX((screen_width - mark_image.GetWidth()) / 2);
+mark_sprite.SetY((screen_height - mark_image.GetHeight()) / 2 - 120);
+mark_sprite.SetZ(10);
+
+wordmark_image = Image("zaod-wordmark.png");
+wordmark_sprite = Sprite(wordmark_image);
+wordmark_sprite.SetX((screen_width - wordmark_image.GetWidth()) / 2);
+wordmark_sprite.SetY((screen_height + mark_image.GetHeight()) / 2 - 60);
+wordmark_sprite.SetZ(10);
+
+spinner_images = [
+  Image("spinner-0.png"), Image("spinner-1.png"), Image("spinner-2.png"),
+  Image("spinner-3.png"), Image("spinner-4.png"), Image("spinner-5.png"),
+  Image("spinner-6.png"), Image("spinner-7.png")
+];
+spinner = Sprite(spinner_images[0]);
+spinner.SetX((screen_width - spinner_images[0].GetWidth()) / 2);
+spinner.SetY(screen_height - 140);
+spinner.SetZ(20);
+
+pill_dim = Image("progress-dim.png");
+pill_sprite = Sprite(pill_dim);
+pill_sprite.SetX((screen_width - pill_dim.GetWidth()) / 2);
+pill_sprite.SetY(screen_height - 92);
+pill_sprite.SetZ(20);
+
+pill_lit = Image("progress-lit.png");
+lit_width = pill_lit.GetWidth();
+lit_height = pill_lit.GetHeight();
+progress = 0.0;
+
+progress_sprite = Sprite();
+progress_sprite.SetZ(21);
+
+frame = 0;
+opacity = 0.0;
+
+fun refresh_callback ()
+{
+  frame = Math.Int(frame + 1) % 8;
+  spinner.SetImage(spinner_images[frame]);
+
+  if (opacity < 1.0)
+    {
+      opacity = opacity + 0.02;
+      mark_sprite.SetOpacity(opacity);
+      wordmark_sprite.SetOpacity(opacity);
+      spinner.SetOpacity(opacity);
+    }
+
+  # Advance the pill smoothly towards 90 percent, then wait for the session.
+  if (progress < 0.9)
+    progress = progress + 0.004;
+
+  visible_width = Math.Int(lit_width * progress);
+  if (visible_width > 0)
+    {
+      progress_image = pill_lit.Crop(0, 0, visible_width, lit_height);
+      progress_sprite.SetImage(progress_image);
+      progress_sprite.SetX((screen_width - lit_width) / 2);
+      progress_sprite.SetY(screen_height - 92);
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+fun display_message_callback (text)
+{
+  # A message from the boot chain replaces the wordmark with the message.
+  message_image = Image.Text(text, 0.91, 0.93, 0.95);
+  wordmark_sprite.SetImage(message_image);
+  wordmark_sprite.SetX((screen_width - message_image.GetWidth()) / 2);
+}
+
+Plymouth.SetDisplayMessageFunction(display_message_callback);
+
+fun quit_callback ()
+{
+  spinner.SetOpacity(0.0);
+  progress_sprite.SetOpacity(0.0);
+}
+
+Plymouth.SetQuitFunction(quit_callback);
