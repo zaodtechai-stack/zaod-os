@@ -16,6 +16,7 @@
 # Nothing here is reversible: the target directory is deleted first.
 set -euo pipefail
 IFS=$'\n\t'
+export DEBIAN_FRONTEND=noninteractive
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -116,6 +117,16 @@ if (( CHECK )); then
 fi
 
 (( EUID == 0 )) || say "not root: privileged steps run through sudo -n"
+if (( EUID != 0 )); then
+  sudo -n true >/dev/null 2>&1 || fail "rootfs build needs root or working sudo -n"
+fi
+mount_probe="$(mktemp -d)"
+if ! as_root mount -t tmpfs tmpfs "$mount_probe" >/dev/null 2>&1; then
+  rmdir "$mount_probe" 2>/dev/null || true
+  fail "this host denies privileged mounts; use a Docker-capable or mount-capable build host"
+fi
+as_root umount "$mount_probe"
+rmdir "$mount_probe"
 
 # ---------------------------------------------------------------- 1. debootstrap
 say "building a $DEBIAN_SUITE base in $ROOTFS_DIR"
@@ -132,7 +143,8 @@ if [[ "$BUILDER" == "mmdebstrap" ]]; then
     --apt-options="--no-install-recommends" \
     "$DEBIAN_SUITE" "$ROOTFS_DIR" "$DEBIAN_MIRROR"
 else
-  as_root debootstrap --variant=minbase --include="$INCLUDE" \
+  as_root debootstrap --variant=minbase --components=main,contrib,non-free-firmware \
+    --include="$INCLUDE" \
     "$DEBIAN_SUITE" "$ROOTFS_DIR" "$DEBIAN_MIRROR"
 fi
 
@@ -145,6 +157,13 @@ as_root install -m 0644 "$FILES_DIR/etc/default-locale" "$ROOTFS_DIR/etc/default
 as_root install -m 0440 "$FILES_DIR/etc/sudoers.d/zaod-desktop" "$ROOTFS_DIR/etc/sudoers.d/zaod-desktop"
 as_root chmod 0755 "$ROOTFS_DIR/etc/sudoers.d"
 as_root cp -a boot/plymouth "$ROOTFS_DIR/usr/share/plymouth/themes/zaod"
+as_root bash desktop/scripts/apply-desktop.sh --root "$ROOTFS_DIR"
+as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \
+  "$ROOTFS_DIR/usr/share/wallpapers/zaod" \
+  "$ROOTFS_DIR/usr/share/themes/Zaod"
+as_root cp -a desktop/design/. "$ROOTFS_DIR/usr/share/zaod/design/"
+as_root cp -a desktop/design/wallpapers/. "$ROOTFS_DIR/usr/share/wallpapers/zaod/"
+as_root cp -a desktop/design/gtk/. "$ROOTFS_DIR/usr/share/themes/Zaod/"
 
 # The default user template is a skel the installer copies, not a login.
 as_root mkdir -p "$ROOTFS_DIR/etc/skel/.config"
@@ -196,10 +215,20 @@ as_root chroot "$ROOTFS_DIR" /usr/sbin/update-initramfs -c -k "$KERNEL_RELEASE"
 cleanup_chroot_mounts
 trap - EXIT
 as_root chroot "$ROOTFS_DIR" /usr/bin/systemctl --root=/ enable NetworkManager.service \
-  earlyoom.service systemd-timesyncd.service
+  earlyoom.service systemd-timesyncd.service sddm.service zaod-lite-mode.service
 if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent group wheel >/dev/null 2>&1; then
   as_root chroot "$ROOTFS_DIR" /usr/sbin/groupadd --system wheel
 fi
+for group in audio video render input netdev; do
+  if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent group "$group" >/dev/null 2>&1; then
+    as_root chroot "$ROOTFS_DIR" /usr/sbin/groupadd --system "$group"
+  fi
+done
+if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent passwd zaodlive >/dev/null 2>&1; then
+  as_root chroot "$ROOTFS_DIR" /usr/sbin/useradd --create-home --shell /bin/bash \
+    --groups wheel,audio,video,render,input,netdev zaodlive
+fi
+as_root chroot "$ROOTFS_DIR" /usr/sbin/passwd --lock zaodlive >/dev/null
 
 # ---------------------------------------------------------------- 4. SBOM
 say "exporting the SBOM and licence texts"

@@ -11,43 +11,64 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-if [[ -z "${KERNEL_VERSION:-}" ]]; then
-  KERNEL_VERSION="$(find /lib/modules -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sort -V | tail -1 || true)"
+KERNEL_OUT="${KERNEL_OUT:-build/out/kernel}"
+MODULES_ARCHIVE="$KERNEL_OUT/modules.tar.gz"
+KERNEL_CONFIG="$KERNEL_OUT/config"
+if [[ -z "${KERNEL_VERSION:-}" && -f "$MODULES_ARCHIVE" ]]; then
+  KERNEL_VERSION="$(tar -tzf "$MODULES_ARCHIVE" \
+    | sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' | LC_ALL=C sort -u | head -n 1)"
 fi
-MODULE_ROOT="${MODULE_ROOT:-/lib/modules/$KERNEL_VERSION}"
+MODULE_ROOT="${MODULE_ROOT:-$KERNEL_OUT/modules-root}"
 OUT="${OUT:-build/out/initramfs.img}"
 BUSYBOX="${BUSYBOX:-$(command -v busybox || echo /bin/busybox)}"
 CHECK=0
 [[ "${1:-}" == "--check" ]] && CHECK=1
 
-REQUIRED_MODULES=(
-  kernel/fs/squashfs/squashfs.ko
-  kernel/fs/overlayfs/overlay.ko
-  kernel/drivers/block/loop.ko
-  kernel/fs/isofs/isofs.ko
-  kernel/fs/fat/fat.ko
-  kernel/fs/fat/vfat.ko
-  kernel/fs/nls/nls_cp437.ko
-  kernel/fs/nls/nls_iso8859-1.ko
-  kernel/fs/nls/nls_utf8.ko
+REQUIRED_CONFIG=(
+  CONFIG_SQUASHFS
+  CONFIG_OVERLAY_FS
+  CONFIG_BLK_DEV_LOOP
+  CONFIG_ISO9660_FS
+  CONFIG_VFAT_FS
+  CONFIG_USB_XHCI_HCD
+  CONFIG_USB_STORAGE
+  CONFIG_DEVTMPFS
+  CONFIG_DEVTMPFS_MOUNT
 )
 
 fail() { printf 'make-initramfs: %s\n' "$*" >&2; exit 1; }
 
-[[ -n "$KERNEL_VERSION" ]] || fail "no kernel modules found below /lib/modules"
-[[ -d "$MODULE_ROOT" ]] || fail "module directory $MODULE_ROOT does not exist"
+[[ -n "$KERNEL_VERSION" ]] || fail "no kernel release found in $MODULES_ARCHIVE"
+[[ -s "$MODULES_ARCHIVE" ]] || fail "Phase 2 modules archive is missing: $MODULES_ARCHIVE"
+[[ -s "$KERNEL_CONFIG" ]] || fail "Phase 2 kernel config is missing: $KERNEL_CONFIG"
 [[ -x "$BUSYBOX" ]] || fail "busybox is required (install the busybox-static package)"
 [[ -f boot/initramfs/zaod-live ]] || fail "boot/initramfs/zaod-live is missing"
 
-missing=()
-for module in "${REQUIRED_MODULES[@]}"; do
-  comp=$(find "$MODULE_ROOT" -path "*/${module}*" -print -quit 2>/dev/null || true)
-  [[ -n "$comp" ]] || missing+=("$module")
-done
-(( ${#missing[@]} == 0 )) || fail "modules missing from $MODULE_ROOT: ${missing[*]}"
+module_path() {
+  case "$1" in
+    CONFIG_ISO9660_FS) printf '%s\n' 'kernel/fs/isofs/isofs.ko' ;;
+    CONFIG_USB_STORAGE) printf '%s\n' 'kernel/drivers/usb/storage/usb-storage.ko' ;;
+    *) return 1 ;;
+  esac
+}
 
-printf 'make-initramfs: kernel %s, %d required modules present\n' \
-  "$KERNEL_VERSION" "${#REQUIRED_MODULES[@]}"
+modular_count=0
+for option in "${REQUIRED_CONFIG[@]}"; do
+  setting="$(sed -n "s/^${option}=//p" "$KERNEL_CONFIG" | head -n 1)"
+  [[ "$setting" == y || "$setting" == m ]] || fail "$option must be built-in or modular in $KERNEL_CONFIG"
+  if [[ "$setting" == m ]]; then
+    relative="$(module_path "$option" 2>/dev/null || true)"
+    [[ -n "$relative" ]] || fail "no initramfs module mapping for $option"
+    tar -tzf "$MODULES_ARCHIVE" | grep -Fqx "./lib/modules/$KERNEL_VERSION/$relative" \
+      || fail "module for $option is missing from $MODULES_ARCHIVE"
+    modular_count=$((modular_count + 1))
+  fi
+done
+tar -tzf "$MODULES_ARCHIVE" | grep -Fqx "./lib/modules/$KERNEL_VERSION/modules.dep" \
+  || fail "modules.dep is missing from $MODULES_ARCHIVE"
+
+printf 'make-initramfs: kernel %s, config ok, %d modular boot drivers\n' \
+  "$KERNEL_VERSION" "$modular_count"
 
 if (( CHECK )); then
   printf 'make-initramfs: --check done, nothing written\n'
@@ -58,27 +79,20 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
 mkdir -p "$STAGE"/{bin,sbin,proc,sys,dev,run,lib,usr/lib,etc,newroot}
+tar -xzf "$MODULES_ARCHIVE" -C "$STAGE"
 cp "$BUSYBOX" "$STAGE/bin/busybox"
 chmod 0755 "$STAGE/bin/busybox"
 for applet in sh ls cat mount umount mkdir sleep blkid grep cut awk du cp echo switch_root \
               mknod printf dmesg modprobe find head tail sed tr chroot; do
   ln -sf busybox "$STAGE/bin/$applet"
 done
-
-mkdir -p "$STAGE/lib/modules/$KERNEL_VERSION"
-for module in "${REQUIRED_MODULES[@]}"; do
-  source_file=$(find "$MODULE_ROOT" -path "*/${module}*" -print -quit)
-  relative="${source_file#"$MODULE_ROOT"/}"
-  mkdir -p "$STAGE/lib/modules/$KERNEL_VERSION/$(dirname "$relative")"
-  cp "$source_file" "$STAGE/lib/modules/$KERNEL_VERSION/$relative"
-done
-
 install -m 0755 boot/initramfs/zaod-live "$STAGE/init"
 printf 'ZAODOS live initramfs, kernel %s\n' "$KERNEL_VERSION" > "$STAGE/etc/zaod-initramfs"
 
 mkdir -p "$(dirname "$OUT")"
+OUT="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
 (
   cd "$STAGE"
-  find . -print0 | sort -z | cpio --null --create --format=newc 2>/dev/null | zstd -19 -q -o "../../$OUT"
+  find . -print0 | sort -z | cpio --null --create --format=newc 2>/dev/null | zstd -19 -q -o "$OUT"
 )
 printf 'make-initramfs: wrote %s (%s)\n' "$OUT" "$(du -h "$OUT" | cut -f1)"

@@ -42,7 +42,7 @@ fetch:
 	@mkdir -p build/cache
 	@bash scripts/fetch.sh
 
-rootfs:
+rootfs: kernel desktop design
 	@mkdir -p build/out
 	@bash scripts/build-rootfs.sh
 
@@ -69,10 +69,10 @@ design:
 	@python3 tests/check_design_tokens.py --verbose | tee build/logs/design.log
 	@python3 desktop/design/tools/scan_assets.py
 
-initramfs:
+initramfs: kernel
 	@bash scripts/make-initramfs.sh
 
-iso:
+iso: rootfs initramfs boot
 	@bash scripts/make-iso.sh
 
 usb:
