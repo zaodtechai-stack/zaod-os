@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop apps firefox studio iso test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index clean
+.PHONY: help doctor fetch firmware kernel rootfs desktop apps firefox studio iso test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index release store-release clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -15,6 +15,8 @@ help:
 	  '  iso          - build the bootable ISO (not implemented yet)' \
 	  '  hello        - build the reference .zaod app package' \
 	  '  store-index  - build every package and sign the store index' \
+	  '  release      - assemble a release directory (needs the ISO)' \
+	  '  store-release- assemble a store-only release directory' \
 	  '  studio       - package Zaod Studio (optional app)' \
 	  '  smoke        - start every app window offscreen and screenshot it' \
 	  '  test         - run every test suite' \
@@ -88,6 +90,12 @@ sandbox-proof:
 
 hello:
 	@bash apps/hello-gui/build.sh $(if $(ZAOD_KEY),$(ZAOD_KEY),)
+
+release:
+	@bash scripts/release.sh $(VERSION) $(if $(ZAOD_KEY),--key $(ZAOD_KEY),)
+
+store-release:
+	@bash scripts/release.sh $(VERSION) $(if $(ZAOD_KEY),--key $(ZAOD_KEY),) --store-only
 
 # The index covers every shipped package, so the packages must exist first.
 store-index: apps firefox

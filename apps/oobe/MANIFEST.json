@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "id": "org.zaod.oobe",
+  "name": "Zaod Setup",
+  "version": "1.0.0",
+  "kind": "system",
+  "arch": "x86_64",
+  "min_os": "0.9.0",
+  "summary": "First-boot setup for Zaod OS",
+  "description": "Three offline steps on first boot: welcome, appearance and privacy. No account, no telemetry unless the person turns it on.",
+  "categories": [
+    "System"
+  ],
+  "license": {
+    "spdx": "MIT",
+    "name": "MIT License"
+  },
+  "author": {
+    "name": "Zaod OS"
+  },
+  "entry": {
+    "exec": "payload/main.py",
+    "args": [],
+    "terminal": false
+  },
+  "icon": "icon.svg",
+  "permissions": {
+    "network": false,
+    "filesystem": [
+      "home"
+    ],
+    "devices": [
+      "dri"
+    ]
+  },
+  "runtimes": [
+    "org.zaod.runtime.pyside6"
+  ],
+  "built_at": "2026-11-15T00:00:00Z",
+  "build": {
+    "recipe": "apps/build-all.sh",
+    "reproducible": true
+  }
+}

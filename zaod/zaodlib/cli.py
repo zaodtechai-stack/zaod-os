@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __version__, keys, pack, repo, sandbox, util
+from . import __version__, keys, pack, repo, sandbox, update, util
 from .errors import SandboxError, StateError, UsageError, ZaodError
 from .install import Installer, verify_package
 from .manifest import Manifest, load_manifest
@@ -109,6 +109,28 @@ def build_parser() -> argparse.ArgumentParser:
     key_trust.set_defaults(handler=cmd_key_trust)
     key_list = key_sub.add_parser("list", help="list trusted keys")
     key_list.set_defaults(handler=cmd_key_list)
+
+    bundle_parser = subparsers.add_parser("bundle", help="create and apply signed update bundles")
+    bundle_sub = bundle_parser.add_subparsers(dest="bundle_command", required=True)
+    bundle_create = bundle_sub.add_parser("create", help="package a set of packages into a signed bundle")
+    bundle_create.add_argument("packages", nargs="+")
+    bundle_create.add_argument("--out", required=True, help="output .zaodbundle path")
+    bundle_create.add_argument("--base", required=True, help="version this bundle updates from")
+    bundle_create.add_argument("--target", required=True, help="version this bundle installs")
+    bundle_create.add_argument("--notes", default="")
+    bundle_create.add_argument("--key", help="Ed25519 private key used to sign the bundle")
+    bundle_create.set_defaults(handler=cmd_bundle_create)
+    bundle_verify = bundle_sub.add_parser("verify", help="verify a bundle without applying it")
+    bundle_verify.add_argument("bundle")
+    bundle_verify.add_argument("--allow-unsigned", action="store_true")
+    bundle_verify.set_defaults(handler=cmd_bundle_verify)
+    bundle_apply = bundle_sub.add_parser("apply", help="apply a bundle, rolling back on failure")
+    bundle_apply.add_argument("bundle")
+    bundle_apply.add_argument("--allow-unsigned", action="store_true")
+    bundle_apply.set_defaults(handler=cmd_bundle_apply)
+    bundle_rollback = bundle_sub.add_parser("rollback", help="replay an update journal")
+    bundle_rollback.add_argument("journal")
+    bundle_rollback.set_defaults(handler=cmd_bundle_rollback)
 
     gc_parser = subparsers.add_parser("gc", help="remove superseded versions and caches")
     gc_parser.set_defaults(handler=cmd_gc)
@@ -418,6 +440,50 @@ def cmd_repo_build(args) -> int:
     index_path, signature_path = repo.build_index(Path(args.directory), args.name, key)
     print(f"wrote {index_path} and {signature_path}")
     print(f"  key id: {key.key_id}")
+    return 0
+
+
+def cmd_bundle_create(args) -> int:
+    bundle = update.create_bundle(
+        [Path(package) for package in args.packages],
+        Path(args.out),
+        base_version=args.base,
+        target_version=args.target,
+        notes=args.notes,
+        key=Path(args.key) if args.key else None,
+    )
+    print(f"wrote {bundle.path} ({len(bundle.packages)} packages, {bundle.sha256[:16]})")
+    print(f"  {bundle.base_version} -> {bundle.target_version}")
+    print(f"  signed by: {bundle.key_id or 'unsigned'}")
+    return 0
+
+
+def cmd_bundle_verify(args) -> int:
+    paths = resolve_paths()
+    bundle = update.verify_bundle(
+        Path(args.bundle),
+        keys.trusted_keys(paths.keys_dir),
+        allow_unsigned=args.allow_unsigned,
+    )
+    print(f"OK bundle {bundle.base_version} -> {bundle.target_version} ({len(bundle.packages)} packages)")
+    print(f"  signed by: {bundle.key_id or 'unsigned (accepted with --allow-unsigned)'}")
+    return 0
+
+
+def cmd_bundle_apply(args) -> int:
+    paths = resolve_paths()
+    report = update.apply_bundle(paths, Path(args.bundle), allow_unsigned=args.allow_unsigned)
+    for app_id in report.installed:
+        print(f"updated {app_id}")
+    print(f"applied {report.target_version}; journal {report.journal}")
+    return 0
+
+
+def cmd_bundle_rollback(args) -> int:
+    paths = resolve_paths()
+    restored = update.rollback_journal(paths, Path(args.journal))
+    for line in restored:
+        print(f"restored {line}")
     return 0
 
 
