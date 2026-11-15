@@ -1,0 +1,12 @@
+NAME="Zaod OS"
+PRETTY_NAME="Zaod OS 1.0"
+ID=zaod
+ID_LIKE=debian
+VERSION="1.0"
+VERSION_ID="1.0"
+VERSION_CODENAME=zaod
+HOME_URL="https://zaod.os/"
+BUG_REPORT_URL="https://zaod.os/support"
+DOCUMENTATION_URL="https://zaod.os/docs"
+LOGO=zaod-logo
+ANSI_COLOR="0;36"

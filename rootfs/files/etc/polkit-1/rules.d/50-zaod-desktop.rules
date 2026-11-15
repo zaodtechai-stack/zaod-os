@@ -1,0 +1,17 @@
+/* Zaod desktop policy.
+ *
+ * Members of wheel may perform administrative actions after authenticating as
+ * themselves. Everything else needs the root password. No rule grants a
+ * passwordless escalation to the store or the control centre. */
+polkit.addAdminRule(function(action, subject) {
+    return ["unix-group:wheel"];
+});
+
+polkit.addRule(function(action, subject) {
+    if (subject.isInGroup("wheel") &&
+        action.id.indexOf("org.freedesktop.packagekit") === 0) {
+        /* Zaod installs packages through its own helper, never PackageKit. */
+        return polkit.Result.NO;
+    }
+    return null;
+});

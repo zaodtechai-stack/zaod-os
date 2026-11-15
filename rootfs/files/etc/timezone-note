@@ -1,0 +1,4 @@
+The timezone is not pinned at build time. systemd-timesyncd sets the clock from
+the network, and the installer writes the zone the user picked to
+/etc/localtime. /etc/timezone is created by that step, not shipped here, so a
+fresh install is never silently locked to the build host's zone.

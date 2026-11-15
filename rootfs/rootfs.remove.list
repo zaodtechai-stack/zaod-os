@@ -1,0 +1,35 @@
+# Removed in the final stage of the rootfs build.
+#
+# The binary package manager must not exist on a Zaod system: packages come from
+# the signed .zaod store. This list is applied with rm, then the build fails hard
+# if any listed path still exists.
+
+# binaries and front ends
+/usr/bin/apt
+/usr/bin/apt-get
+/usr/bin/apt-cache
+/usr/bin/apt-config
+/usr/bin/apt-mark
+/usr/bin/aptitude
+/usr/bin/dpkg
+/usr/bin/dpkg-deb
+/usr/bin/dpkg-query
+/usr/bin/dpkg-divert
+/usr/bin/dpkg-split
+/usr/bin/dpkg-statoverride
+/usr/bin/apt-key
+/usr/bin/unattended-upgrade
+
+# databases and configuration
+/etc/apt
+/etc/dpkg
+/var/lib/apt
+/var/lib/dpkg
+/var/cache/apt
+/var/log/apt
+
+# libraries only the package manager needs; the desktop does not link them
+/usr/lib/x86_64-linux-gnu/libapt-pkg.so.6.0
+/usr/lib/x86_64-linux-gnu/libapt-pkg.so.7.0
+/usr/lib/x86_64-linux-gnu/libapt-private.so.0.0
+/usr/lib/x86_64-linux-gnu/libdpkg.so.3

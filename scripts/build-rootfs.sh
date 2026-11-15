@@ -1,129 +1,297 @@
 #!/usr/bin/env bash
-# Build the minimal Debian trixie rootfs artifact (PRD phase 3 evidence).
+# Build the Zaod OS root filesystem.
 #
-# The runtime image must not carry distro package management, so the requested
-# package set is recorded as evidence and apt/dpkg are stripped from the image
-# before the tarball is produced. The tarball is then checked again, because a
-# rootfs that still contains apt is not a Zaod rootfs.
+#   scripts/build-rootfs.sh --check    # validate inputs on this host, write nothing
+#   sudo scripts/build-rootfs.sh       # build, strip, de-package and squash
+#
+# Stages, in order:
+#   1. debootstrap a Debian trixie base from rootfs/packages.list
+#   2. install the Zaod configuration files from rootfs/files
+#   3. install the Phase 2 kernel, modules and firmware from build/out
+#   4. export the SBOM and the licence texts to /usr/share/zaod
+#   5. strip documentation, manuals and unused locales
+#   6. remove the Debian package manager and hard-fail if anything survives
+#   7. squash the result with zstd level 19 and report sizes
+#
+# Nothing here is reversible: the target directory is deleted first.
 set -euo pipefail
+IFS=$'\n\t'
 
-ROOTFS_DIR="${ROOTFS_DIR:-/tmp/zaod-rootfs-minimal}"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+ROOTFS_DIR="${ROOTFS_DIR:-build/rootfs}"
 OUT_DIR="${OUT_DIR:-build/out}"
-TARBALL_PATH="${TARBALL_PATH:-$OUT_DIR/zaod-trixie-rootfs-minimal.tar}"
-SUITE="${SUITE:-trixie}"
-MIRROR="${MIRROR:-https://deb.debian.org/debian}"
-PACKAGES="apt bash ca-certificates coreutils curl dbus findutils grep gzip iproute2
-less openssl procps python3 sed systemd systemd-sysv tar tzdata util-linux xz-utils
-netbase vim-tiny"
+SQUASHFS="${SQUASHFS:-$OUT_DIR/zaod-rootfs.squashfs}"
+ROOTFS_TARBALL="${ROOTFS_TARBALL:-$OUT_DIR/zaod-rootfs.tar}"
+KERNEL_OUT="${KERNEL_OUT:-$OUT_DIR/kernel}"
+SQUASH_LEVEL="${SQUASH_LEVEL:-19}"
+DEBIAN_SUITE="${DEBIAN_SUITE:-trixie}"
+DEBIAN_MIRROR="${DEBIAN_MIRROR:-https://deb.debian.org/debian}"
+MAX_UNCOMPRESSED_MB="${MAX_UNCOMPRESSED_MB:-3584}"
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1794700800}"
+PACKAGE_LIST="rootfs/packages.list"
+REMOVE_LIST="rootfs/rootfs.remove.list"
+FILES_DIR="rootfs/files"
+CHECK=0
 
-# Everything Debian package management needs, and nothing the runtime needs.
-STRIP_PATHS="/usr/bin/apt /usr/bin/apt-get /usr/bin/apt-cache /usr/bin/apt-config
-/usr/bin/apt-mark /usr/bin/dpkg /usr/bin/dpkg-deb /usr/bin/dpkg-divert /usr/bin/dpkg-query
-/usr/bin/dpkg-split /usr/bin/dpkg-statoverride /usr/bin/dpkg-trigger /usr/sbin/dpkg-preconfigure
-/etc/apt /var/lib/apt /var/lib/dpkg /var/cache/apt /usr/lib/apt"
+[[ "${1:-}" == "--check" ]] && CHECK=1
 
-mkdir -p "$OUT_DIR"
+say() { printf '\033[1;36m[rootfs]\033[0m %s\n' "$*"; }
+fail() { printf '\033[1;31m[rootfs] %s\033[0m\n' "$*" >&2; exit 1; }
 
-if [[ $(id -u) -eq 0 ]]; then
-  RM=()
-else
-  RM=(sudo -n)
+as_root() {
+  if (( EUID == 0 )); then "$@"; else sudo -n "$@"; fi
+}
+
+# Inside the target root, paths are absolute. This helper removes directory
+# contents without ever touching the build host, because it only runs chrooted.
+strip_inside() {
+  # shellcheck disable=SC2016  # this script runs inside the target root
+  as_root chroot "$ROOTFS_DIR" /bin/sh -c '
+    export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+    for range in /usr/share/doc /usr/share/man /usr/share/info /usr/share/lintian \
+                 /usr/share/gtk-doc /var/cache/apt /var/lib/apt/lists; do
+      [ -d "$range" ] && find "$range" -mindepth 1 -delete 2>/dev/null
+    done
+    for locale_dir in /usr/share/locale/*; do
+      [ -d "$locale_dir" ] || continue
+      case "$(basename "$locale_dir")" in
+        en|en_US|en_GB|C|POSIX) continue ;;
+      esac
+      find "$locale_dir" -mindepth 1 -delete 2>/dev/null
+      rmdir "$locale_dir" 2>/dev/null || true
+    done
+    [ -f /var/lib/dpkg/status-old ] && rm -f /var/lib/dpkg/status-old
+    exit 0
+  '
+}
+
+# ---------------------------------------------------------------- input checks
+command -v mksquashfs >/dev/null || fail "mksquashfs is missing (install squashfs-tools)"
+BUILDER=""
+for candidate in mmdebstrap debootstrap; do
+  if command -v "$candidate" >/dev/null; then BUILDER="$candidate"; break; fi
+done
+[[ -n "$BUILDER" ]] || fail "need mmdebstrap or debootstrap on the build host"
+
+[[ -f "$PACKAGE_LIST" ]] || fail "$PACKAGE_LIST is missing"
+[[ -f "$REMOVE_LIST" ]] || fail "$REMOVE_LIST is missing"
+[[ -d "$FILES_DIR" ]] || fail "$FILES_DIR is missing"
+
+mapfile -t packages < <(grep -vE '^[[:space:]]*(#|$)' "$PACKAGE_LIST")
+(( ${#packages[@]} > 0 )) || fail "the package list is empty"
+
+mapfile -t removals < <(grep -vE '^[[:space:]]*(#|$)' "$REMOVE_LIST")
+(( ${#removals[@]} > 0 )) || fail "the removal list is empty"
+
+for required in systemd dbus network-manager pipewire wireplumber mesa-vulkan-drivers \
+                plasma-desktop sddm polkitd bubblewrap zram-generator earlyoom python3; do
+  printf '%s\n' "${packages[@]}" | grep -qx "$required" \
+    || fail "the package list is missing $required"
+done
+
+for required in /usr/bin/apt /usr/bin/dpkg /var/lib/dpkg /var/lib/apt /etc/apt; do
+  printf '%s\n' "${removals[@]}" | grep -qx "$required" \
+    || fail "the removal list does not cover $required"
+done
+
+[[ -f "$FILES_DIR/etc/os-release" ]] || fail "$FILES_DIR/etc/os-release is missing"
+grep -qx 'ID=zaod' "$FILES_DIR/etc/os-release" || fail "os-release does not identify Zaod OS"
+grep -q 'NAME="Zaod OS"' "$FILES_DIR/etc/os-release" || fail "os-release name is wrong"
+
+for input in vmlinuz System.map modules.tar.gz firmware.tar.xz firmware-source-commit.txt; do
+  [[ -s "$KERNEL_OUT/$input" ]] || fail "Phase 2 input is missing: $KERNEL_OUT/$input"
+done
+mapfile -t kernel_releases < <(tar -tzf "$KERNEL_OUT/modules.tar.gz" \
+  | sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' | LC_ALL=C sort -u)
+(( ${#kernel_releases[@]} == 1 )) || fail "expected one kernel release in modules.tar.gz"
+KERNEL_RELEASE="${kernel_releases[0]}"
+
+printf '[rootfs] inputs ok\n  builder     %s\n  suite       %s\n  packages    %d\n  removal     %d paths\n  squashfs    %s (zstd level %s)\n' \
+  "$BUILDER" "$DEBIAN_SUITE" "${#packages[@]}" "${#removals[@]}" "$SQUASHFS" "$SQUASH_LEVEL"
+
+if (( CHECK )); then
+  printf '[rootfs] --check done, nothing written\n'
+  exit 0
 fi
 
-"${RM[@]}" rm -rf "$ROOTFS_DIR" "$TARBALL_PATH" "$TARBALL_PATH.sha256"
+(( EUID == 0 )) || say "not root: privileged steps run through sudo -n"
 
-# Evidence: what the image was asked to contain, before anything is stripped.
-{
-  printf 'suite: %s\n' "$SUITE"
-  printf 'mirror: %s\n' "$MIRROR"
-  printf 'packages:\n'
-  # shellcheck disable=SC2086  # the package list is intentionally split into lines
-  printf '%s\n' $PACKAGES
-} > "$OUT_DIR/rootfs-packages.txt"
+# ---------------------------------------------------------------- 1. debootstrap
+say "building a $DEBIAN_SUITE base in $ROOTFS_DIR"
+as_root rm -rf "$ROOTFS_DIR"
+mkdir -p "$ROOTFS_DIR" build
 
-strip_in_tree() {
-  local root=$1
-  local path
-  local remove=("${RM[@]}")
-  for path in $STRIP_PATHS; do
-    "${remove[@]}" rm -rf "${root:?}$path"
+printf '%s\n' "${packages[@]}" > build/packages.resolved.txt
+INCLUDE="$(paste -sd, build/packages.resolved.txt)"
+if [[ "$BUILDER" == "mmdebstrap" ]]; then
+  as_root mmdebstrap \
+    --variant=important \
+    --include="$INCLUDE" \
+    --components=main,contrib,non-free-firmware \
+    --apt-options="--no-install-recommends" \
+    "$DEBIAN_SUITE" "$ROOTFS_DIR" "$DEBIAN_MIRROR"
+else
+  as_root debootstrap --variant=minbase --include="$INCLUDE" \
+    "$DEBIAN_SUITE" "$ROOTFS_DIR" "$DEBIAN_MIRROR"
+fi
+
+# ---------------------------------------------------------------- 2. Zaod files
+say "installing Zaod configuration files"
+as_root mkdir -p "$ROOTFS_DIR"/etc "$ROOTFS_DIR"/usr/share/zaod/licenses \
+  "$ROOTFS_DIR"/var/lib/zaod/keys "$ROOTFS_DIR"/usr/share/plymouth/themes
+as_root cp -a "$FILES_DIR"/. "$ROOTFS_DIR"/
+as_root install -m 0644 "$FILES_DIR/etc/default-locale" "$ROOTFS_DIR/etc/default/locale"
+as_root install -m 0440 "$FILES_DIR/etc/sudoers.d/zaod-desktop" "$ROOTFS_DIR/etc/sudoers.d/zaod-desktop"
+as_root chmod 0755 "$ROOTFS_DIR/etc/sudoers.d"
+as_root cp -a boot/plymouth "$ROOTFS_DIR/usr/share/plymouth/themes/zaod"
+
+# The default user template is a skel the installer copies, not a login.
+as_root mkdir -p "$ROOTFS_DIR/etc/skel/.config"
+cat <<'SKEL' | as_root tee "$ROOTFS_DIR/etc/skel/.profile" >/dev/null
+# Zaod OS default shell profile
+if [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi
+export XDG_CURRENT_DESKTOP=KDE
+SKEL
+as_root chmod 0644 "$ROOTFS_DIR/etc/skel/.profile"
+
+# ---------------------------------------------------------------- 3. kernel
+say "installing Phase 2 kernel $KERNEL_RELEASE, modules and pinned firmware"
+as_root install -d "$ROOTFS_DIR/boot" "$ROOTFS_DIR/lib/firmware"
+as_root install -m 0644 "$KERNEL_OUT/vmlinuz" "$ROOTFS_DIR/boot/vmlinuz-$KERNEL_RELEASE"
+as_root install -m 0644 "$KERNEL_OUT/System.map" "$ROOTFS_DIR/boot/System.map-$KERNEL_RELEASE"
+as_root tar -xzf "$KERNEL_OUT/modules.tar.gz" -C "$ROOTFS_DIR"
+as_root depmod -a -b "$ROOTFS_DIR" "$KERNEL_RELEASE"
+as_root tar -xJf "$KERNEL_OUT/firmware.tar.xz" -C "$ROOTFS_DIR/lib/firmware"
+as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/licenses/linux-firmware"
+for notice in LICENSE LICENSE-CRITERIA.md WHENCE; do
+  if [[ -f "$ROOTFS_DIR/lib/firmware/$notice" ]]; then
+    as_root cp "$ROOTFS_DIR/lib/firmware/$notice" \
+      "$ROOTFS_DIR/usr/share/zaod/licenses/linux-firmware/$notice"
+  fi
+done
+if [[ -d "$ROOTFS_DIR/lib/firmware/LICENSES" ]]; then
+  as_root cp -a "$ROOTFS_DIR/lib/firmware/LICENSES" \
+    "$ROOTFS_DIR/usr/share/zaod/licenses/linux-firmware/"
+fi
+as_root install -m 0644 "$KERNEL_OUT/firmware-source-commit.txt" \
+  "$ROOTFS_DIR/usr/share/zaod/licenses/linux-firmware/source-commit.txt"
+
+# The initramfs must be generated before package management is removed.
+say "generating initramfs for $KERNEL_RELEASE"
+CHROOT_MOUNTS=()
+cleanup_chroot_mounts() {
+  local index
+  for ((index=${#CHROOT_MOUNTS[@]} - 1; index >= 0; index--)); do
+    as_root umount -R "$ROOTFS_DIR/${CHROOT_MOUNTS[index]}" >/dev/null 2>&1 || true
   done
 }
-
-verify_no_package_manager() {
-  local root=$1
-  local found
-  found=$(find "$root" -maxdepth 3 \
-    \( -name apt -o -name apt-get -o -name dpkg -o -name dpkg-query \) 2>/dev/null || true)
-  if [ -n "$found" ] || [ -e "$root/var/lib/dpkg/status" ]; then
-    printf 'Rootfs still contains distro package management:\n%s\n' "$found" >&2
-    exit 1
-  fi
-  printf 'Verified: no apt or dpkg in the rootfs image.\n'
-}
-
-docker_usable=0
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  docker_usable=1
+trap cleanup_chroot_mounts EXIT
+for pseudo in dev proc sys run; do
+  as_root mount --rbind "/$pseudo" "$ROOTFS_DIR/$pseudo"
+  as_root mount --make-rslave "$ROOTFS_DIR/$pseudo"
+  CHROOT_MOUNTS+=("$pseudo")
+done
+as_root chroot "$ROOTFS_DIR" /usr/sbin/update-initramfs -c -k "$KERNEL_RELEASE"
+cleanup_chroot_mounts
+trap - EXIT
+as_root chroot "$ROOTFS_DIR" /usr/bin/systemctl --root=/ enable NetworkManager.service \
+  earlyoom.service systemd-timesyncd.service
+if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent group wheel >/dev/null 2>&1; then
+  as_root chroot "$ROOTFS_DIR" /usr/sbin/groupadd --system wheel
 fi
 
-if [[ "$docker_usable" == "1" ]]; then
-  BUILD_DIR="$(mktemp -d)"
-  # shellcheck disable=SC2086,SC2016  # the package and path lists are words for the Dockerfile
+# ---------------------------------------------------------------- 4. SBOM
+say "exporting the SBOM and licence texts"
+# shellcheck disable=SC2016  # variables here belong to the chroot, not the host
+as_root chroot "$ROOTFS_DIR" /bin/sh -c '
+  export PATH=/usr/sbin:/usr/bin:/sbin:/bin
   {
-    printf 'FROM debian:%s-slim\n' "$SUITE"
-    printf 'RUN apt-get update && apt-get install -y --no-install-recommends %s && rm -rf /var/lib/apt/lists/*\n' \
-      "$(printf '%s ' $PACKAGES)"
-    printf 'RUN for path in %s; do rm -rf "$path"; done\n' "$(printf '%s ' $STRIP_PATHS)"
-  } > "$BUILD_DIR/Dockerfile"
+    printf "Zaod OS software bill of materials\n"
+    printf "generated: %s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf "package\tversion\tarchitecture\tmaintainer\n"
+    dpkg-query -W -f="\${Package}\t\${Version}\t\${Architecture}\t\${Maintainer}\n" | sort
+  } > /usr/share/zaod/sbom.txt
+  mkdir -p /usr/share/zaod/licenses
+  for pkg in $(dpkg-query -W -f="\${Package}\n"); do
+    if [ -f "/usr/share/doc/$pkg/copyright" ]; then
+      cp "/usr/share/doc/$pkg/copyright" "/usr/share/zaod/licenses/$pkg.txt" 2>/dev/null || true
+    fi
+  done
+  printf "packages: %s\nlicence files: %s\n" \
+    "$(dpkg-query -W -f="\${Package}\n" | wc -l)" \
+    "$(find /usr/share/zaod/licenses -type f | wc -l)" >> /usr/share/zaod/sbom.txt
+'
 
-  docker build -t zaod-rootfs-builder "$BUILD_DIR" >/dev/null
-  docker create --name zaod-rootfs-builder-container zaod-rootfs-builder >/dev/null
-  docker export zaod-rootfs-builder-container -o "$TARBALL_PATH"
-  docker rm -f zaod-rootfs-builder-container >/dev/null 2>&1 || true
-  rm -rf "$BUILD_DIR"
-else
-  # No usable Docker: fall back to the Debian bootstrap tools from
-  # scripts/setup-tools.sh, which the PRD names as the base-image method.
-  # shellcheck disable=SC2086  # comma list needs the packages split into words
-  include=$(printf '%s\n' $PACKAGES | paste -sd, -)
-  # debootstrap and mmdebstrap need privileged mounts inside the target, so fail
-  # early with a readable reason instead of leaving a half-built directory.
-  if [[ $(id -u) -ne 0 ]]; then
-    printf 'Rootfs bootstrap needs root (or Docker); re-run with sudo.\n' >&2
-    exit 1
-  fi
-  probe=$(mktemp -d)
-  if ! mount -t tmpfs tmpfs "$probe" >/dev/null 2>&1; then
-    rmdir "$probe" 2>/dev/null || true
-    printf 'This host denies privileged mounts, so chroot/proc inside the target image cannot be mounted.\n' >&2
-    printf 'Build the rootfs on a host or CI runner with mount privileges, or install Docker.\n' >&2
-    exit 1
-  fi
-  umount "$probe" >/dev/null 2>&1 || true
-  rmdir "$probe" 2>/dev/null || true
-  if command -v mmdebstrap >/dev/null 2>&1; then
-    printf 'Docker unavailable: building the %s rootfs with mmdebstrap.\n' "$SUITE"
-    "${RM[@]}" mmdebstrap --variant=apt --include="$include" "$SUITE" "$ROOTFS_DIR" "$MIRROR"
-  elif command -v debootstrap >/dev/null 2>&1; then
-    printf 'Docker unavailable: building the %s rootfs with debootstrap.\n' "$SUITE"
-    "${RM[@]}" debootstrap --variant=minbase --include="$include" "$SUITE" "$ROOTFS_DIR" "$MIRROR"
-  else
-    printf 'No rootfs build backend available: install docker, mmdebstrap or debootstrap.\n' >&2
-    exit 1
-  fi
-  strip_in_tree "$ROOTFS_DIR"
-  verify_no_package_manager "$ROOTFS_DIR"
-  "${RM[@]}" tar -C "$ROOTFS_DIR" -cf "$TARBALL_PATH" .
-fi
+# ---------------------------------------------------------------- 5. strip
+say "stripping documentation, manuals and unused locales"
+strip_inside
 
-# Final gate: whichever backend ran, the tarball itself must be clean.
-if tar -tf "$TARBALL_PATH" | grep -Eq '(^|/)(usr/bin/(apt|apt-get|dpkg|dpkg-query)|var/lib/dpkg/status)$'; then
-  printf 'Rootfs tarball still contains apt or dpkg; refusing to publish it.\n' >&2
-  exit 1
-fi
+# ---------------------------------------------------------------- 6. remove apt/dpkg
+say "removing the Debian package manager"
+while IFS= read -r path; do
+  case "$path" in ''|'#'*) continue ;; esac
+  as_root rm -rf "${ROOTFS_DIR:?}${path}"
+done < "$REMOVE_LIST"
 
-sha256sum "$TARBALL_PATH" > "$TARBALL_PATH.sha256"
-ls -lh "$TARBALL_PATH"
-printf 'Root filesystem tarball created: %s\n' "$TARBALL_PATH"
-printf 'Package set recorded in %s/rootfs-packages.txt\n' "$OUT_DIR"
+survivors=()
+while IFS= read -r path; do
+  case "$path" in ''|'#'*) continue ;; esac
+  [[ -e "${ROOTFS_DIR}${path}" ]] && survivors+=("$path")
+done < "$REMOVE_LIST"
+(( ${#survivors[@]} == 0 )) || fail "the package manager survived removal: ${survivors[*]}"
+
+for binary in apt apt-get apt-cache apt-config aptitude dpkg dpkg-query dpkg-deb; do
+  if as_root chroot "$ROOTFS_DIR" /bin/sh -c "command -v $binary" >/dev/null 2>&1; then
+    fail "$binary is still on PATH inside the rootfs"
+  fi
+done
+for library in apt-pkg apt-private dpkg; do
+  while IFS= read -r -d '' path; do
+    as_root rm -f "$path"
+  done < <(find "$ROOTFS_DIR/usr/lib" -type f -name "lib${library}.so*" -print0 2>/dev/null || true)
+done
+for database in /etc/apt /var/lib/apt /var/lib/dpkg; do
+  [[ ! -e "$ROOTFS_DIR$database" ]] || fail "package manager database remains: $database"
+done
+say "apt, apt-get and dpkg are gone and their databases are absent"
+
+# ---------------------------------------------------------------- 7. squash
+uncompressed_kb="$(as_root du -sk "$ROOTFS_DIR" | cut -f1)"
+uncompressed_mb=$(( uncompressed_kb / 1024 ))
+say "uncompressed rootfs: ${uncompressed_mb} MB (limit ${MAX_UNCOMPRESSED_MB} MB)"
+(( uncompressed_mb <= MAX_UNCOMPRESSED_MB )) \
+  || fail "the rootfs exceeds the size budget: ${uncompressed_mb} MB > ${MAX_UNCOMPRESSED_MB} MB"
+
+mkdir -p "$OUT_DIR"
+say "squashing with zstd level $SQUASH_LEVEL"
+as_root rm -f "$SQUASHFS"
+as_root mksquashfs "$ROOTFS_DIR" "$SQUASHFS" \
+  -comp zstd -Xcompression-level "$SQUASH_LEVEL" \
+  -noappend -all-root -no-progress
+as_root chown "$(id -u):$(id -g)" "$SQUASHFS" 2>/dev/null || true
+
+say "writing reproducible rootfs tarball"
+as_root tar -C "$ROOTFS_DIR" --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
+  --numeric-owner --owner=0 --group=0 --format=posix -cf "$ROOTFS_TARBALL" .
+as_root chown "$(id -u):$(id -g)" "$ROOTFS_TARBALL" 2>/dev/null || true
+sha256sum "$ROOTFS_TARBALL" > "$ROOTFS_TARBALL.sha256"
+sha256sum "$SQUASHFS" > "$SQUASHFS.sha256"
+
+squash_mb=$(( $(stat -c %s "$SQUASHFS") / 1024 / 1024 ))
+mkdir -p build/logs
+{
+  printf 'rootfs report\n'
+  printf 'date: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf 'suite: %s\n' "$DEBIAN_SUITE"
+  printf 'packages: %d\n' "${#packages[@]}"
+  printf 'kernel: %s\n' "$KERNEL_RELEASE"
+  printf 'uncompressed: %s MB\n' "$uncompressed_mb"
+  printf 'rootfs tar: %s\n' "$ROOTFS_TARBALL"
+  printf 'rootfs tar sha256: %s\n' "$(cut -d' ' -f1 "$ROOTFS_TARBALL.sha256")"
+  printf 'squashfs: %s MB (zstd level %s)\n' "$squash_mb" "$SQUASH_LEVEL"
+  printf 'squashfs sha256: %s\n' "$(cut -d' ' -f1 "$SQUASHFS.sha256")"
+  printf 'package manager: removed and verified absent\n'
+} | tee build/logs/rootfs-report.txt
+
+say "wrote $SQUASHFS (${squash_mb} MB)"

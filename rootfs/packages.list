@@ -1,79 +1,132 @@
-# Phase 3 base and hardware services
+# Zaod OS base system packages, Debian trixie.
+#
+# Grouped by purpose. Everything here is required for the supported desktop or
+# for the system to boot; nothing is pulled in "for convenience". Packages that
+# only exist for the Debian package manager are deliberately absent from the
+# install set and removed in the final stage instead (see rootfs.remove.list),
+# because the desktop packages depend on a few of their libraries.
+
+## init, service management, logging
 systemd
 systemd-sysv
+systemd-resolved
 systemd-timesyncd
-systemd-udev
 dbus
 dbus-user-session
+udev
+kmod
+procps
+psmisc
+e2fsprogs
+util-linux
+kbd
+console-setup
+locales
+tzdata
+
+## boot and storage
+grub-common
+grub-pc-bin
+grub-efi-amd64-bin
+efibootmgr
+initramfs-tools
+squashfs-tools
+zstd
+xz-utils
+parted
+mtools
+dosfstools
+cryptsetup
+lvm2
+mdadm
+
+## networking
 network-manager
 wpasupplicant
 bluez
-pipewire
-pipewire-audio
-pipewire-pulse
-wireplumber
-alsa-utils
-libspa-0.2-bluetooth
-
-# Graphics, input, and Wayland runtime prepared for Phase 5
-libdrm2
-libegl1
-libgl1-mesa-dri
-libgbm1
-mesa-vulkan-drivers
-libinput10
-libinput-tools
-libxkbcommon0
-xwayland
-qt6-wayland
-libqt6core6t64
-libqt6dbus6
-libqt6gui6
-libqt6network6
-libqt6qml6
-libqt6quick6
-libqt6quickcontrols2-6
-libqt6svg6
-libqt6widgets6
-libqt6waylandclient6
-python3-pyside6.qtcore
-python3-pyside6.qtgui
-python3-pyside6.qtnetwork
-python3-pyside6.qtqml
-python3-pyside6.qtquick
-python3-pyside6.qtsvg
-python3-pyside6.qtwidgets
-qml6-module-qtquick
-qml6-module-qtquick-controls
-qml6-module-qtquick-layouts
-qml6-module-qtquick-templates
-qml6-module-qtquick-window
-qml6-module-qtqml-workerscript
-
-# Fonts and memory management
-fonts-inter
-fonts-noto-core
-fonts-noto-color-emoji
-fonts-jetbrains-mono
-systemd-zram-generator
-earlyoom
-
-# Privilege policy, Python, initramfs, and base utilities
-polkitd
-pkexec
-sudo
-bubblewrap
-python3
-python3-venv
-locales
-tzdata
-initramfs-tools
-kmod
-ca-certificates
+bluez-firmware
+iw
 iproute2
 iputils-ping
-dnsutils
-procps
-util-linux
-e2fsprogs
-dosfstools
+netbase
+ca-certificates
+curl
+
+## audio and video plumbing
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+alsa-ucm-conf
+libspa-0.2-bluetooth
+gstreamer1.0-pipewire
+
+## graphics and input
+mesa-vulkan-drivers
+libgl1-mesa-dri
+libglx-mesa0
+libegl-mesa0
+libinput10
+libinput-tools
+xwayland
+xserver-xorg-core
+
+## desktop
+plasma-desktop
+plasma-workspace
+plasma-workspace-wayland
+plasma-nm
+plasma-pa
+sddm
+kwin-wayland
+kwin-x11
+kscreen
+kscreenlocker
+kde-cli-tools
+kio
+kio-extras
+dolphin
+konsole
+kwalletmanager
+breeze-gtk-theme
+qt6-wayland
+qt6ct
+xdg-desktop-portal
+xdg-desktop-portal-kde
+polkit-kde-agent-1
+powerdevil
+upower
+
+## session helpers
+polkitd
+pkexec
+bubblewrap
+xdg-utils
+desktop-file-utils
+shared-mime-info
+fonts-inter
+fonts-noto-core
+fonts-noto-mono
+fonts-jetbrains-mono
+
+## memory and pressure handling
+zram-generator
+earlyoom
+systemd-oomd
+
+## runtime for the Zaod tooling
+python3
+python3-pyqt6
+python3-pyqt6-svg
+python3-dbus
+python3-gi
+python3-pip
+python3-venv
+
+## console and small utilities
+nano
+less
+bash-completion
+usbutils
+pciutils
+rfkill

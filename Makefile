@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop design apps firefox studio initramfs iso usb boot zaod test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index release store-release clean
+.PHONY: help doctor fetch firmware kernel rootfs rootfs-check desktop design apps firefox studio initramfs iso usb boot zaod test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index release store-release clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -9,6 +9,7 @@ help:
 	  '  firmware     - package selected, pinned Linux firmware' \
 	  '  kernel       - build the Zaod kernel and firmware bundle' \
 	  '  rootfs       - build the Zaod base system without distro package management' \
+	  '  rootfs-check - validate the rootfs inputs without building' \
 	  '  desktop      - install and validate the Plasma session configuration' \
 	  '  design       - regenerate and validate Zaod Fluent assets' \
 	  '  apps         - build and sign every Zaod application package' \
@@ -44,6 +45,10 @@ fetch:
 rootfs:
 	@mkdir -p build/out
 	@bash scripts/build-rootfs.sh
+
+rootfs-check:
+	@bash scripts/build-rootfs.sh --check
+	@python3 tests/check_rootfs_config.py
 
 firmware:
 	@bash scripts/build-firmware.sh
