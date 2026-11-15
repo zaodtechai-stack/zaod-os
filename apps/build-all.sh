@@ -10,14 +10,17 @@ stage_root="$root/build/staging"
 key=${1:-}
 zaod_cli="$root/zaod/bin/zaod"
 
-python3 - "$stage_root" <<'CLEAN'
+# Clean the output too: a package for an app that no longer builds must not
+# linger in build/out/apps and keep getting published.
+python3 - "$stage_root" "$out" <<'CLEAN'
 import pathlib
 import shutil
 import sys
 
-target = pathlib.Path(sys.argv[1])
-if target.is_dir():
-    shutil.rmtree(target)
+for argument in sys.argv[1:]:
+    target = pathlib.Path(argument)
+    if target.is_dir():
+        shutil.rmtree(target)
 CLEAN
 mkdir -p "$out" "$stage_root"
 
@@ -26,6 +29,9 @@ for directory in "$here"/*/; do
   # Apps with their own builder (e.g. Firefox) are packaged by that builder.
   [ -d "$directory/payload" ] || continue
   slug=$(basename "$directory")
+  # Studio has its own builder and stays optional: 'make studio' writes it to
+  # build/out/optional so the published store index never ships it.
+  [ "$slug" = "studio" ] && continue
   stage="$stage_root/$slug"
   mkdir -p "$stage/payload/lib"
   cp "$directory/MANIFEST.json" "$stage/MANIFEST.json"

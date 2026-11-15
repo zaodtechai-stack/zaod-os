@@ -67,6 +67,12 @@ for extra in index.json index.json.sig; do
     exit 2
   fi
 done
+# Ship the store public key: an installed system cannot verify index.json.sig
+# without it, and installer/modules/zaod-repo.conf expects keys/store.pub.
+if [ -f "$root/build/out/store/keys/store.pub" ]; then
+  mkdir -p "$out/store/keys"
+  cp "$root/build/out/store/keys/store.pub" "$out/store/keys/store.pub"
+fi
 mkdir -p "$out/store/keys"
 if [ -n "$key" ] && [ -f "${key%.key}.pub" ]; then
   cp "${key%.key}.pub" "$out/store/keys/store.pub"

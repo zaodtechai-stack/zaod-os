@@ -45,6 +45,13 @@ Test totals today: 97 package-manager + 9 update-bundle + 43 application + 16 St
 5. **Phase 9 window launch is unverified.** Templates build byte-reproducibly, pass
    `zaod-studio verify --strict` and install into a scratch root, but `zaod run`
    cannot start here because the sandbox denies network namespaces.
+6. **No runtime package exists.** Thirteen app manifests declare
+   `runtimes: ["org.zaod.runtime.pyside6"]`, but `org.zaod.runtime.pyside6` is never
+   built. Install does not resolve runtimes yet, so apps install fine, but an image
+   built today would have no PySide6 to run them. Build it with the phase 3 rootfs.
+7. **Phase 9 install path is unverified in QEMU.** Templates build and the Studio
+   suite passes; "install offline from a local repo in QEMU and launch all five
+   templates" needs the Phase 3/4 image.
 
 ## How to check the repository in one pass
 
@@ -102,6 +109,23 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
   and mount preflight, `make store-index` now depends on `apps` and `firefox`.
 - Rootfs evidence still missing: this sandbox denies the chroot mounts debootstrap
   needs, so the 150 MB trixie tarball must be produced on a Docker-capable host.
+
+### 2026-11-15: repository review, six more defects fixed
+
+- `apps/oobe` manifest used `kind: "system"`, which the validator does not accept, so
+  `make apps` would have died on the setup package. Now `kind: "app"`; all 14 packages
+  build.
+- `repo/build-store.sh` published the first-boot app and Studio, and never published the
+  store's public key, while the installer expected `keys/store.pub`. The index now skips
+  `oobe-*` and `studio-*` and writes `build/out/store/keys/store.pub`.
+- `scripts/release.sh` read the store from `repo/build/` and its directory reset removed
+  the `store/` subdirectory, so a release run failed on `cp`. Both fixed; a store-only
+  release now verifies end to end (SHA256SUMS plus `release.json.sig`).
+- `apps/build-all.sh` never cleaned `build/out/apps`, so packages for removed apps kept
+  being published. It now cleans the output directory too.
+- Rebuilt state: 14 packages, 12-package signed index, release directory for 1.1.0 with
+  checksums and signature. README phase table now lists all ten phases with honest
+  states, and the missing `org.zaod.runtime.pyside6` package is recorded as a gap.
 
 ### 2026-11-15: phase 10 tooling, plus repairs to the phase 3/QA push
 

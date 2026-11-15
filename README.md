@@ -2,17 +2,24 @@
 
 Zaod OS is a lightweight x86_64 Linux desktop built from a single repository.
 `PRD.md` is the source of truth and the phase plan; each finished phase has a
-report under `docs/reports/`.
+report under `docs/reports/`. Phases 3 to 6 are the missing ones: until the rootfs,
+boot chain, desktop session and design system exist, no image can be produced and
+every installer, QEMU and hardware acceptance item stays blocked.
 
 ## Status
 
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Foundation, toolchain, feasibility | done, `docs/reports/phase-1.md` |
-| 2 | Kernel 6.18 LTS with the Zaod config | done, `docs/reports/phase-2.md` |
+| 2 | Kernel 6.18 LTS with the Zaod config | config done, build artifact missing, `docs/reports/phase-2.md` |
+| 3 | Base system without distro packages | **not built**: no `rootfs/` package list, no rootfs tarball |
+| 4 | Boot chain and live ISO | **not built**: `make iso` exits 2, no initramfs, GRUB or xorriso code |
+| 5 | Desktop session (Plasma 6) | **not built**: no `desktop/` sources |
+| 6 | Zaod Fluent design system | **not built**: no tokens, theme, icons or wallpapers |
 | 7 | `.zaod` format and package manager | done, `docs/reports/phase-7.md` |
-| 8 | Applications, Store and Control Center | done, `docs/reports/phase-8.md` |
+| 8 | Applications, Store and Control Center | built, `docs/reports/phase-8.md` |
 | 9 | Studio, templates and project builds | done, `docs/reports/phase-9.md` |
+| 10 | Installer, OOBE, updates, release | tooling done, image blocked, `docs/reports/phase-10.md` |
 
 ## Repository layout
 

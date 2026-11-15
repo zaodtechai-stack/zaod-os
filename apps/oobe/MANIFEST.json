@@ -3,10 +3,10 @@
   "id": "org.zaod.oobe",
   "name": "Zaod Setup",
   "version": "1.0.0",
-  "kind": "system",
+  "kind": "app",
   "arch": "x86_64",
   "min_os": "0.9.0",
-  "summary": "First-boot setup for Zaod OS",
+  "summary": "First-boot setup for Zaod OS (installed by the system, not the Store)",
   "description": "Three offline steps on first boot: welcome, appearance and privacy. No account, no telemetry unless the person turns it on.",
   "categories": [
     "System"

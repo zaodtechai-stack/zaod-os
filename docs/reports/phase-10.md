@@ -144,3 +144,29 @@ ShellCheck is clean.
    `docs/reports/hardware-matrix.md`.
 5. **Release tag.** Once an image is built, `make release VERSION=1.0.0` produces the full
    directory and `v1.0.0` can be tagged.
+
+## Follow-up: review pass and fixes (later on 2026-11-15)
+
+A full read-through of the repository after the phase 10 push found six defects. All
+are fixed and re-verified by rebuilding the packages and the store index.
+
+| Defect | Effect | Fix |
+| --- | --- | --- |
+| `apps/oobe/MANIFEST.json` used `kind: "system"` | not a valid kind; `make apps` would have failed on the setup package | now `kind: "app"`; all 14 packages build |
+| `repo/build-store.sh` published the first-boot app | the Store offered "Zaod Setup" to users | index now skips `oobe-*` |
+| `repo/build-store.sh` published Studio | contradicts "Studio absent by default" and the phase 9 report | index now skips `studio-*`; `make studio` stays the optional path |
+| The store's trust key was never published | an installed system had nothing to verify `index.sig` with, and `installer/modules/zaod-repo.conf` pointed at a file nobody wrote | `repo build` step now also writes `build/out/store/keys/store.pub` |
+| `scripts/release.sh` read the store from `repo/build/` and its cleanup deleted the `store/` subdirectory | a release run produced no store content and then failed on `cp` | reads `build/out/store/`, resets the directory safely |
+| `apps/build-all.sh` never cleaned `build/out/apps` | removed or excluded apps kept being published from stale packages | output directory is cleaned with the staging directory |
+
+Rebuilt state after the fixes: 14 packages in `build/out/apps`, a 12-package signed store
+index (`firefox` plus 11 apps, no setup app, no Studio), `build/out/store/keys/store.pub`
+published, and a store-only release at `build/release/1.1.0/` whose `SHA256SUMS` verifies
+and whose `release.json.sig` verifies against that public key.
+
+### What still blocks 1.0.0 (unchanged)
+
+Phases 3, 4, 5 and 6 are still not built: no `rootfs/` package list, no rootfs tarball,
+no boot chain or ISO code, no `desktop/` sources and no design system. Every installer,
+QEMU and hardware acceptance item depends on them. `make iso` and `make desktop` exit 2
+on purpose.
