@@ -33,7 +33,6 @@ REQUIRED_CONFIG=(
   CONFIG_USB_XHCI_HCD
   CONFIG_USB_STORAGE
   CONFIG_DEVTMPFS
-  CONFIG_DEVTMPFS_MOUNT
 )
 
 fail() { printf 'make-initramfs: %s\n' "$*" >&2; exit 1; }
@@ -69,17 +68,34 @@ module_lookup() {
     | head -n 1
 }
 
+# Collect every problem before failing: one CI run should report all of them.
+problems=()
 modular_count=0
 for option in "${REQUIRED_CONFIG[@]}"; do
   setting="$(sed -n "s/^${option}=//p" "$KERNEL_CONFIG" | head -n 1)"
-  [[ "$setting" == y || "$setting" == m ]] || fail "$option must be built-in or modular in $KERNEL_CONFIG"
-  if [[ "$setting" == m ]]; then
-    basename="$(module_basename "$option")"
-    relative="$(module_lookup "$basename")"
-    [[ -n "$relative" ]] || fail "module $basename for $option is missing from $MODULES_ARCHIVE"
-    modular_count=$((modular_count + 1))
+  if [[ "$setting" != y && "$setting" != m ]]; then
+    problems+=("$option must be built-in or modular in $KERNEL_CONFIG (found: ${setting:-unset})")
+    continue
   fi
+  [[ "$setting" == m ]] || continue
+  basename="$(module_basename "$option")"
+  if [[ -z "$(module_lookup "$basename")" ]]; then
+    problems+=("module $basename for $option is missing from $MODULES_ARCHIVE")
+    continue
+  fi
+  modular_count=$((modular_count + 1))
 done
+
+# The live init mounts devtmpfs itself (boot/initramfs/zaod-live), so a kernel
+# that leaves CONFIG_DEVTMPFS_MOUNT unset, as Debian's does, is fine.
+if [[ -z "$(sed -n 's/^CONFIG_DEVTMPFS_MOUNT=//p' "$KERNEL_CONFIG" | head -n 1)" ]]; then
+  printf 'make-initramfs: note: CONFIG_DEVTMPFS_MOUNT is unset; the live init mounts devtmpfs itself\n'
+fi
+
+if (( ${#problems[@]} )); then
+  printf 'make-initramfs: %s\n' "${problems[@]}" >&2
+  exit 1
+fi
 tar -tzf "$MODULES_ARCHIVE" | grep -Fqx "./lib/modules/$KERNEL_VERSION/modules.dep" \
   || fail "modules.dep is missing from $MODULES_ARCHIVE"
 
