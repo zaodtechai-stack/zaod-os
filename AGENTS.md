@@ -12,10 +12,10 @@ Work on `main` only, and never revert or rewrite another agent's phase.
 | --- | --- | --- | --- |
 | 1 | Foundation, toolchain, feasibility | done | `make doctor`, `make fetch`, Ruff + ShellCheck |
 | 2 | Kernel 6.18.63 with the Zaod config | partial | `python3 tests/check_kernel_config.py kernel/zaod_defconfig` (95 options) |
-| 3 | Rootfs without distro package management | script ready, artifact missing | `scripts/build-rootfs.sh` records `build/out/rootfs-packages.txt` and strips apt/dpkg; needs a Docker or mount-capable host |
-| 4 | Boot chain and live ISO | not implemented | `make iso` exits 2 |
-| 5 | Plasma 6 desktop session | not implemented | no `desktop/` sources |
-| 6 | Zaod Fluent design system | not implemented | no tokens, no theme, no screenshots |
+| 3 | Rootfs without distro package management | configs pass, artifact blocked | `python3 tests/check_rootfs_config.py` (91 checks); `make rootfs` still needs the kernel artifact and a mount-capable host |
+| 4 | Boot chain and live ISO | configs pass, ISO blocked | `python3 tests/check_boot_config.py` (88 checks); `make iso` needs rootfs + initramfs |
+| 5 | Plasma 6 desktop session | configs pass, session unverified | `python3 tests/check_desktop_config.py` (715 checks), `tests/test_lite_mode.py` |
+| 6 | Zaod Fluent design system | tokens pass, screenshots pending | `python3 tests/check_design_tokens.py` (532 checks, 42 contrast pairs), `tests/test_design_tools.py` (38 tests) |
 | 7 | `.zaod` format and package manager | done (one gap) | `make zaod-test` (97 tests), `make hello` |
 | 8 | Core apps, Firefox ESR, Store, Control Center | built, partly unverified | `make apps` (13 packages), `make firefox`, `make store-index`, `make smoke` |
 | 9 | Zaod Studio and project templates | done (window launch unverified) | `make studio-test` (16 tests); all five templates build byte-reproducibly, `verify --strict`, and install |
@@ -165,3 +165,17 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
   Release output: 20 artifacts.
 - Still blocked for Phase 10: the ISO side (`make release` without `--store-only`),
   OOBE and the installer need the Phase 3/4 image.
+
+### 2026-11-16: phases 3-6 landed; configs verified, artifacts still gated on the kernel
+
+- New on main: Phase 3 rootfs pipeline (`rootfs/`, curated package set, shipped config),
+  Phase 4 boot chain (`boot/grub`, `initramfs`, `plymouth`, USB writer), Phase 5 session
+  and Phase 6 design system (`desktop/`).
+- Verified here: `check_rootfs_config` 91/91, `check_boot_config` 88/88,
+  `check_design_tokens` 532/532 with 42 contrast pairs, `check_desktop_config` 715/715,
+  `test_design_tools` 38 tests, plus the existing 106 + 43 + 16 suites. Lint clean.
+- Design note: the lowest contrast pair is 3.13:1. That clears AA for large text and UI
+  components but not for small body text, so a designer should confirm where it is used.
+- `make rootfs-check` now fails with "Phase 2 input is missing: build/out/kernel/vmlinuz",
+  so the kernel build is the single gate for phases 3, 4 and the ISO items in 10.
+  A `make kernel` run was started on this host (1 core, firmware fetch included).
