@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "id": "org.zaod.editor",
+  "name": "Text Editor",
+  "version": "1.0.0",
+  "kind": "app",
+  "arch": "x86_64",
+  "min_os": "0.7.0",
+  "summary": "Plain text editing with word count",
+  "description": "Plain text editing with word count. Original Zaod OS application, MIT licensed.",
+  "categories": [
+    "Office"
+  ],
+  "license": {
+    "spdx": "MIT",
+    "name": "MIT License"
+  },
+  "author": {
+    "name": "Zaod OS"
+  },
+  "entry": {
+    "exec": "payload/main.py",
+    "args": [],
+    "terminal": false
+  },
+  "icon": "icon.svg",
+  "permissions": {
+    "network": false,
+    "filesystem": [
+      "documents"
+    ],
+    "devices": [
+      "dri"
+    ]
+  },
+  "runtimes": [
+    "org.zaod.runtime.pyside6"
+  ],
+  "built_at": "2026-11-15T00:00:00Z",
+  "build": {
+    "recipe": "apps/build-all.sh",
+    "reproducible": true
+  },
+  "associations": [
+    "text/plain"
+  ]
+}

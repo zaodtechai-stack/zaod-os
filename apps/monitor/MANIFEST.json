@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "id": "org.zaod.monitor",
+  "name": "System Monitor",
+  "version": "1.0.0",
+  "kind": "app",
+  "arch": "x86_64",
+  "min_os": "0.7.0",
+  "summary": "Memory, load and uptime at a glance",
+  "description": "Memory, load and uptime at a glance. Original Zaod OS application, MIT licensed.",
+  "categories": [
+    "System"
+  ],
+  "license": {
+    "spdx": "MIT",
+    "name": "MIT License"
+  },
+  "author": {
+    "name": "Zaod OS"
+  },
+  "entry": {
+    "exec": "payload/main.py",
+    "args": [],
+    "terminal": false
+  },
+  "icon": "icon.svg",
+  "permissions": {
+    "network": false,
+    "filesystem": [],
+    "devices": [
+      "dri"
+    ]
+  },
+  "runtimes": [
+    "org.zaod.runtime.pyside6"
+  ],
+  "built_at": "2026-11-15T00:00:00Z",
+  "build": {
+    "recipe": "apps/build-all.sh",
+    "reproducible": true
+  }
+}

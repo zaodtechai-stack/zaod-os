@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "id": "org.zaod.viewer",
+  "name": "Image Viewer",
+  "version": "1.0.0",
+  "kind": "app",
+  "arch": "x86_64",
+  "min_os": "0.7.0",
+  "summary": "Open and zoom pictures from Pictures",
+  "description": "Open and zoom pictures from Pictures. Original Zaod OS application, MIT licensed.",
+  "categories": [
+    "Graphics"
+  ],
+  "license": {
+    "spdx": "MIT",
+    "name": "MIT License"
+  },
+  "author": {
+    "name": "Zaod OS"
+  },
+  "entry": {
+    "exec": "payload/main.py",
+    "args": [],
+    "terminal": false
+  },
+  "icon": "icon.svg",
+  "permissions": {
+    "network": false,
+    "filesystem": [
+      "pictures"
+    ],
+    "devices": [
+      "dri"
+    ]
+  },
+  "runtimes": [
+    "org.zaod.runtime.pyside6"
+  ],
+  "built_at": "2026-11-15T00:00:00Z",
+  "build": {
+    "recipe": "apps/build-all.sh",
+    "reproducible": true
+  },
+  "associations": [
+    "image/png",
+    "image/jpeg",
+    "image/webp"
+  ]
+}
