@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop design apps iso test clean
+.PHONY: help doctor fetch firmware kernel rootfs desktop design apps iso zaod test clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -13,7 +13,8 @@ help:
 	  '  design  - regenerate and verify the design system artefacts' \
 	  '  apps    - build Zaod applications (not implemented yet)' \
 	  '  iso     - build the bootable ISO (not implemented yet)' \
-	  '  test    - run available tests' \
+	  '  zaod    - run the package manager test suite' \
+	  '  test    - run every available test' \
 	  '  clean   - remove generated build outputs'
 
 doctor:
@@ -51,9 +52,11 @@ apps iso:
 	@printf 'Target "%s" is not implemented yet.\n' "$@" >&2
 	@exit 2
 
+zaod:
+	@python3 -m pytest zaod/tests -q
+
 test:
-	@python3 -m unittest discover -s zaod/tests -v
-	@python3 -m pytest tests -q
+	@python3 -m pytest tests zaod/tests -q
 
 clean:
 	@rm -rf build

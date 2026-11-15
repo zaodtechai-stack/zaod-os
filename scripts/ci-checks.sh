@@ -11,7 +11,7 @@ printf '\n== ruff ==\n'
 ruff check .
 
 printf '\n== pytest ==\n'
-python3 -m pytest tests -q
+python3 -m pytest tests zaod/tests -q
 
 printf '\n== generated design artefacts ==\n'
 python3 desktop/design/tools/tokens_to_qml.py --check
