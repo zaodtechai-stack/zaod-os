@@ -19,6 +19,7 @@ procps
 psmisc
 e2fsprogs
 util-linux
+passwd
 kbd
 console-setup
 locales

@@ -129,7 +129,18 @@ def check_qml(report: Report) -> None:
             re.search(r"^import QtQuick", text, re.MULTILINE) is not None,
             f"{path.relative_to(REPO_ROOT)} imports QtQuick",
         )
-        report.check("function" in text or "Rectangle" in text, f"{path.relative_to(REPO_ROOT)} has content")
+        # A surface or component is a real QML document when it declares a root
+        # type: the shell surfaces are items, the screenshot harnesses are
+        # windows, and the icon set draws with Canvas or Shape.
+        root = re.search(
+            r"^\s*(?:Rectangle|Item|Window|Row|Column|Grid|Flow|Shape|Canvas|Text|Image|MouseArea)\s*\{",
+            text,
+            re.MULTILINE,
+        )
+        report.check(
+            "function" in text or root is not None,
+            f"{path.relative_to(REPO_ROOT)} has content",
+        )
 
 
 # The vendor scanner must name the vendors it rejects, so it is exempt from the
