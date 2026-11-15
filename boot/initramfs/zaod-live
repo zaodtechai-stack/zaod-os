@@ -1,0 +1,122 @@
+#!/bin/sh
+# Zaod live-boot init. Runs as PID 1 inside the initramfs.
+#
+# 1. parse the zaod.* kernel parameters
+# 2. find the media carrying the ZAODOS volume label
+# 3. loop-mount the squashfs read-only and stack a tmpfs write layer on top
+# 4. switch_root into the live system
+#
+# Every failure path drops to a rescue shell with a message on the console
+# instead of hanging, and nothing is ever written to the boot media.
+
+set -eu
+
+LABEL="ZAODOS"
+SQUASHFS="zaod-os-x86_64.squashfs"
+SQUASH_DIR="/boot/zaod"
+MEDIA=""
+LIVE_ROOT="/run/zaod/live"
+OVERLAY_ROOT="/run/zaod/overlay"
+RD="/run/zaod"
+
+say() { printf '\033[1;36m[zaod]\033[0m %s\n' "$*"; }
+fail() {
+  printf '\033[1;31m[zaod] %s\033[0m\n' "$*" >&2
+  printf 'Dropping to a rescue shell. The boot media was not modified.\n' >&2
+  exec /bin/sh
+}
+
+TORAM=0
+RESCUE=0
+SAFEGFX=0
+INSTALLER=0
+
+# Word-splitting the kernel command line is exactly what is wanted here.
+# shellcheck disable=SC2013
+for parameter in $(cat /proc/cmdline); do
+  case "$parameter" in
+    zaod.live=*) : ;;
+    zaod.toram=1) TORAM=1 ;;
+    zaod.rescue=1) RESCUE=1 ;;
+    zaod.safegfx=1) SAFEGFX=1 ;;
+    zaod.installer=1) INSTALLER=1 ;;
+    zaod.root=*) MEDIA="${parameter#zaod.root=}" ;;
+    root=live:LABEL=*) LABEL="${parameter##*LABEL=}" ;;
+  esac
+done
+
+[ "$SAFEGFX" -eq 1 ] && say "safe graphics requested: kernel modesetting stays off"
+
+mkdir -p "$RD" "$LIVE_ROOT" "$OVERLAY_ROOT/upper" "$OVERLAY_ROOT/work"
+
+# --- locate the media -------------------------------------------------------
+wait_for_media() {
+  attempt=0
+  while [ "$attempt" -lt 30 ]; do
+    for candidate in /dev/disk/by-label/"$LABEL" /dev/sr0 /dev/sda /dev/sdb; do
+      [ -e "$candidate" ] || continue
+      if blkid "$candidate" 2>/dev/null | grep -q "LABEL=\"$LABEL\""; then
+        MEDIA="$candidate"
+        return 0
+      fi
+    done
+    attempt=$((attempt + 1))
+    say "waiting for the $LABEL media ($attempt/30)"
+    sleep 1
+  done
+  return 1
+}
+
+[ -n "$MEDIA" ] || wait_for_media || fail "cannot find media labelled $LABEL"
+
+say "using boot media $MEDIA"
+mkdir -p /run/zaod/media
+mount -t iso9660 -o ro "$MEDIA" /run/zaod/media || mount -t vfat -o ro "$MEDIA" /run/zaod/media \
+  || fail "cannot mount $MEDIA read-only"
+
+SQUASH_PATH="/run/zaod/media${SQUASH_DIR}/${SQUASHFS}"
+[ -f "$SQUASH_PATH" ] || fail "missing $SQUASH_PATH on the boot media"
+say "squashfs: $SQUASH_PATH ($(du -h "$SQUASH_PATH" | cut -f1))"
+
+# --- copy to RAM when asked -------------------------------------------------
+if [ "$TORAM" -eq 1 ]; then
+  available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+  needed_kb=$(( $(du -k "$SQUASH_PATH" | cut -f1) * 2 ))
+  if [ "$available_kb" -lt "$needed_kb" ]; then
+    fail "zaod.toram=1 needs about $((needed_kb / 1024)) MB of RAM, this machine has $((available_kb / 1024)) MB"
+  fi
+  say "copying the image to RAM"
+  cp "$SQUASH_PATH" /run/zaod/ram.squashfs || fail "cannot copy the image to RAM"
+  SQUASH_PATH="/run/zaod/ram.squashfs"
+fi
+
+# --- mount the image read-only and stack a writable layer -------------------
+mount -t squashfs -o ro,loop "$SQUASH_PATH" "$LIVE_ROOT" || fail "cannot mount $SQUASH_PATH"
+
+mkdir -p "$LIVE_ROOT/run/zaod" 2>/dev/null || true
+mount -t tmpfs -o mode=0755 tmpfs "$RD" 2>/dev/null || true
+
+say "stacking a tmpfs write layer (nothing is written to the media)"
+mount -t overlay overlay \
+  -o "lowerdir=$LIVE_ROOT,upperdir=$OVERLAY_ROOT/upper,workdir=$OVERLAY_ROOT/work" \
+  /run/zaod/root || {
+    say "overlayfs unavailable; continuing with a read-only live root"
+    mount --bind "$LIVE_ROOT" /run/zaod/root
+  }
+
+mkdir -p /run/zaod/root/run/zaod
+mount --move "$RD" /run/zaod/root/run/zaod || true
+
+if [ "$RESCUE" -eq 1 ]; then
+  say "rescue mode: starting a shell inside the live root"
+fi
+if [ "$INSTALLER" -eq 1 ]; then
+  say "installer mode: the session will start the installer"
+  echo installer > /run/zaod/root/run/zaod/boot-mode
+fi
+if [ "$SAFEGFX" -eq 1 ]; then
+  echo safegfx > /run/zaod/root/run/zaod/boot-mode
+fi
+
+say "handing over to the live system"
+exec switch_root /run/zaod/root /sbin/init

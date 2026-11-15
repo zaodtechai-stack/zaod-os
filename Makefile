@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop design apps firefox studio iso test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index release store-release clean
+.PHONY: help doctor fetch firmware kernel rootfs desktop design apps firefox studio initramfs iso usb boot zaod test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index release store-release clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -8,12 +8,15 @@ help:
 	  '  fetch        - download and verify the pinned kernel source tarball' \
 	  '  firmware     - package selected, pinned Linux firmware' \
 	  '  kernel       - build the Zaod kernel and firmware bundle' \
-	  '  rootfs       - build the minimal Debian trixie tarball evidence artifact' \
+	  '  rootfs       - build the Zaod base system without distro package management' \
 	  '  desktop      - install and validate the Plasma session configuration' \
 	  '  design       - regenerate and validate Zaod Fluent assets' \
 	  '  apps         - build and sign every Zaod application package' \
+	  '  initramfs    - assemble the live boot initramfs' \
 	  '  firefox      - repackage Firefox ESR with the Google search policy' \
-	  '  iso          - build the bootable ISO (not implemented yet)' \
+	  '  iso          - build the hybrid UEFI/BIOS ISO' \
+	  '  usb          - print the safe USB writer usage' \
+	  '  boot         - validate boot-chain configuration' \
 	  '  hello        - build the reference .zaod app package' \
 	  '  store-index  - build every package and sign the store index' \
 	  '  release      - assemble a release directory (needs the ISO)' \
@@ -61,9 +64,20 @@ design:
 	@python3 tests/check_design_tokens.py --verbose | tee build/logs/design.log
 	@python3 desktop/design/tools/scan_assets.py
 
+initramfs:
+	@bash scripts/make-initramfs.sh
+
 iso:
-	@printf 'Target "%s" is not implemented yet.\n' "$@" >&2
+	@bash scripts/make-iso.sh
+
+usb:
+	@printf 'usage: scripts/write-usb.sh --iso build/out/zaod-os-VERSION-x86_64.iso --device /dev/sdX\n' >&2
 	@exit 2
+
+boot:
+	@python3 tests/check_boot_config.py
+
+zaod: zaod-test
 
 apps:
 	@bash apps/build-all.sh $(if $(ZAOD_KEY),$(ZAOD_KEY),)
