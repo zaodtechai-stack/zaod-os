@@ -44,12 +44,22 @@ fail() { printf 'make-initramfs: %s\n' "$*" >&2; exit 1; }
 [[ -x "$BUSYBOX" ]] || fail "busybox is required (install the busybox-static package)"
 [[ -f boot/initramfs/zaod-live ]] || fail "boot/initramfs/zaod-live is missing"
 
-module_path() {
+# Kernels differ in module directory layout and in whether .ko files are
+# compressed, so a module is looked up by name rather than by a hardcoded path.
+module_name() {
   case "$1" in
-    CONFIG_ISO9660_FS) printf '%s\n' 'kernel/fs/isofs/isofs.ko' ;;
-    CONFIG_USB_STORAGE) printf '%s\n' 'kernel/drivers/usb/storage/usb-storage.ko' ;;
+    CONFIG_ISO9660_FS) printf '%s\n' 'isofs/fs/isofs' ;;
+    CONFIG_USB_STORAGE) printf '%s\n' 'usb-storage/drivers/usb/storage' ;;
     *) return 1 ;;
   esac
+}
+
+module_lookup() {
+  # $1 directory hint, $2 module basename
+  tar -tzf "$MODULES_ARCHIVE" \
+    | sed -n "s#^\./lib/modules/$KERNEL_VERSION/.*/$2\.ko\(\.\(zst\|xz\|gz\)\)\{0,1\}\$#&\n#p" \
+    | head -n 1 \
+    | sed "s#^\./lib/modules/$KERNEL_VERSION/##"
 }
 
 modular_count=0
@@ -57,10 +67,10 @@ for option in "${REQUIRED_CONFIG[@]}"; do
   setting="$(sed -n "s/^${option}=//p" "$KERNEL_CONFIG" | head -n 1)"
   [[ "$setting" == y || "$setting" == m ]] || fail "$option must be built-in or modular in $KERNEL_CONFIG"
   if [[ "$setting" == m ]]; then
-    relative="$(module_path "$option" 2>/dev/null || true)"
-    [[ -n "$relative" ]] || fail "no initramfs module mapping for $option"
-    tar -tzf "$MODULES_ARCHIVE" | grep -Fqx "./lib/modules/$KERNEL_VERSION/$relative" \
-      || fail "module for $option is missing from $MODULES_ARCHIVE"
+    mapping="$(module_name "$option" 2>/dev/null || true)"
+    [[ -n "$mapping" ]] || fail "no initramfs module mapping for $option"
+    relative="$(module_lookup "${mapping%%/*}" "${mapping##*/}")"
+    [[ -n "$relative" ]] || fail "module ${mapping##*/} for $option is missing from $MODULES_ARCHIVE"
     modular_count=$((modular_count + 1))
   fi
 done

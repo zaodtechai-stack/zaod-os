@@ -132,3 +132,4 @@ bash-completion
 usbutils
 pciutils
 rfkill
+linux-image-amd64
