@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zaod.os/spec/manifest.schema.json",
+  "title": "Zaod package manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "name", "version", "kind", "arch", "min_os", "summary", "license", "author", "permissions"],
+  "properties": {
+    "format": { "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "kind": { "enum": ["app", "runtime", "theme", "project", "system-update"] },
+    "arch": { "const": "x86_64" },
+    "min_os": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "summary": { "type": "string", "minLength": 4, "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 4000 },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx"],
+      "properties": {
+        "spdx": { "type": "string", "minLength": 2, "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 120 },
+        "url": { "type": "string", "maxLength": 300 }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "contact": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exec"],
+      "properties": {
+        "exec": { "type": "string", "pattern": "^payload/[^\\./].*$" },
+        "args": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 200 },
+          "maxItems": 16
+        },
+        "terminal": { "type": "boolean" }
+      }
+    },
+    "icon": { "type": "string", "pattern": "^(icon\\.svg|icon\\.png|screenshots/.+)$" },
+    "screenshots": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^screenshots/[^\\./].*$" },
+      "maxItems": 8
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "network": { "type": "boolean" },
+        "filesystem": {
+          "type": "array",
+          "items": { "enum": ["home", "documents", "downloads", "music", "pictures", "videos", "desktop", "removable"] },
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "devices": {
+          "type": "array",
+          "items": { "enum": ["dri", "audio", "input", "usb", "kvm"] },
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "maxLength": 400 }
+        }
+      }
+    },
+    "runtimes": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "associations": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9-]+/[A-Za-z0-9.+-]+$" },
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "homepage": { "type": "string", "maxLength": 300 },
+    "built_at": { "type": "string", "maxLength": 40 },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recipe": { "type": "string", "maxLength": 300 },
+        "source": { "type": "string", "maxLength": 300 },
+        "reproducible": { "type": "boolean" }
+      }
+    }
+  }
+}

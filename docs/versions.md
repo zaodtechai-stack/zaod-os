@@ -18,3 +18,12 @@
 
 - The workspace mount is not suitable for direct debootstrap because it is mounted with noexec/nodev.
 - The Docker-export method is the accepted build path for Phase 1 documentation and future reproducible builds.
+
+## Package manager tooling (Phase 7)
+
+- Target runtime: Python 3.12+ standard library only, no third-party modules
+- zstd: system `zstd` 1.5.4 (`libzstd.so.1` 1.5.4 available as the `ctypes` fallback)
+- Signatures: Ed25519 per RFC 8032, vendored in `zaod/zaodlib/ed25519.py`
+- Sandbox: bubblewrap 0.8.0 (`bwrap`)
+- Lint on the build host: Ruff 0.17.5, ShellCheck 0.9.0
+- Manifest and store index schemas: format version 1 (`zaod/spec/`)

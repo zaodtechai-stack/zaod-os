@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Privileged helper for system-wide Zaod operations.
+
+The helper is started through ``pkexec`` or ``sudo`` by ``zaod``. It re-runs the
+same command as root, so every trust decision (trusted keys, signature
+verification, atomic install) happens again with root privileges and root-owned
+key material. Callers cannot skip verification by passing different flags.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+for candidate in [os.environ.get("ZAOD_LIB"), str(HERE.parent / "lib" / "zaod"), str(HERE.parent), "/usr/lib/zaod"]:
+    if candidate and (Path(candidate) / "zaodlib" / "__init__.py").is_file():
+        sys.path.insert(0, candidate)
+        break
+else:
+    sys.stderr.write("zaod-priv-helper: error: cannot locate the zaodlib module\n")
+    raise SystemExit
+
+from zaodlib.cli import main  # noqa: E402 - path set above
+
+ALLOWED = {
+    "install",
+    "remove",
+    "update",
+    "gc",
+    "repo-add",
+    "repo-remove",
+    "repo-sync",
+    "key-trust",
+}
+
+
+def run() -> int:
+    if os.geteuid() != 0:
+        sys.stderr.write("zaod-priv-helper: error: must run as root\n")
+        return 1
+    argv = sys.argv[1:]
+    command = next((item for item in argv if item in ALLOWED), None)
+    if command is None:
+        sys.stderr.write(
+            "zaod-priv-helper: error: only system package operations are allowed "
+            f"({', '.join(sorted(ALLOWED))})\n"
+        )
+        return 2
+    os.environ.pop("ZAOD_ROOT", None)
+    return main(argv)
+
+
+if __name__ == "__main__":
+    sys.exit(run())

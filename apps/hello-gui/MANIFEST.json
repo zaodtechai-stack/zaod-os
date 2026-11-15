@@ -1,0 +1,42 @@
+{
+  "arch": "x86_64",
+  "author": {
+    "name": "Zaod OS"
+  },
+  "build": {
+    "recipe": "apps/hello-gui/build.sh",
+    "reproducible": true
+  },
+  "built_at": "2026-11-15T00:00:00Z",
+  "categories": [
+    "Utility"
+  ],
+  "description": "A small PySide6 window that proves a .zaod package installs, appears in the menu and uninstalls cleanly.",
+  "entry": {
+    "args": [],
+    "exec": "payload/main.py",
+    "terminal": false
+  },
+  "format": 1,
+  "icon": "icon.svg",
+  "id": "org.zaod.hello",
+  "kind": "app",
+  "license": {
+    "name": "MIT License",
+    "spdx": "MIT"
+  },
+  "min_os": "0.7.0",
+  "name": "Hello",
+  "permissions": {
+    "devices": [
+      "dri"
+    ],
+    "filesystem": [],
+    "network": false
+  },
+  "runtimes": [
+    "org.zaod.runtime.pyside6"
+  ],
+  "summary": "Minimal Zaod app used to prove desktop integration",
+  "version": "1.0.0"
+}

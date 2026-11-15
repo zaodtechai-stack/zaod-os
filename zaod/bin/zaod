@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Zaod package manager launcher.
+
+Works both from the source tree (``zaod/bin/zaod``) and from an installed
+system (``/usr/bin/zaod`` with the library in ``/usr/lib/zaod``).
+"""
+
+import os
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CANDIDATES = [
+    os.environ.get("ZAOD_LIB"),
+    str(HERE.parent / "lib" / "zaod"),
+    str(HERE.parent),
+    "/usr/lib/zaod",
+]
+
+for candidate in CANDIDATES:
+    if candidate and (Path(candidate) / "zaodlib" / "__init__.py").is_file():
+        sys.path.insert(0, candidate)
+        break
+else:
+    sys.stderr.write("zaod: error: cannot locate the zaodlib module\n")
+    raise SystemExit  # noqa: B904 - launcher has no library to report with
+
+from zaodlib.cli import main  # noqa: E402 - path set above
+
+if __name__ == "__main__":
+    sys.exit(main())
