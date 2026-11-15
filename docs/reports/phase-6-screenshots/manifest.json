@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "generator": "desktop/design/tools/capture_surfaces.py",
+    "note": "Rendered from source. Qt Quick surfaces use the real engine; apps are launched per package in their own process.",
+    "resolution": "1366x768",
+    "themes": [
+      "light",
+      "dark"
+    ]
+  },
+  "surfaces": {
+    "calculator": {
+      "dark": "calculator-dark.png",
+      "kind": "app",
+      "light": "calculator-light.png"
+    },
+    "clock": {
+      "dark": "clock-dark.png",
+      "kind": "app",
+      "light": "clock-light.png"
+    },
+    "control-center": {
+      "dark": "control-center-dark.png",
+      "kind": "app",
+      "light": "control-center-light.png"
+    },
+    "converter": {
+      "dark": "converter-dark.png",
+      "kind": "app",
+      "light": "converter-light.png"
+    },
+    "desktop": {
+      "dark": "desktop-dark.png",
+      "kind": "qml",
+      "light": "desktop-light.png"
+    },
+    "editor": {
+      "dark": "editor-dark.png",
+      "kind": "app",
+      "light": "editor-light.png"
+    },
+    "hello-gui": {
+      "dark": "hello-gui-dark.png",
+      "kind": "app",
+      "light": "hello-gui-light.png"
+    },
+    "kit": {
+      "dark": "kit-dark.png",
+      "kind": "qml",
+      "light": "kit-light.png"
+    },
+    "monitor": {
+      "dark": "monitor-dark.png",
+      "kind": "app",
+      "light": "monitor-light.png"
+    },
+    "notes": {
+      "dark": "notes-dark.png",
+      "kind": "app",
+      "light": "notes-light.png"
+    },
+    "notifications": {
+      "dark": "notifications-dark.png",
+      "kind": "qml",
+      "light": "notifications-light.png"
+    },
+    "oobe": {
+      "dark": "oobe-dark.png",
+      "kind": "app",
+      "light": "oobe-light.png"
+    },
+    "quicksettings": {
+      "dark": "quicksettings-dark.png",
+      "kind": "qml",
+      "light": "quicksettings-light.png"
+    },
+    "startmenu": {
+      "dark": "startmenu-dark.png",
+      "kind": "qml",
+      "light": "startmenu-light.png"
+    },
+    "store": {
+      "dark": "store-dark.png",
+      "kind": "app",
+      "light": "store-light.png"
+    },
+    "studio": {
+      "dark": "studio-dark.png",
+      "kind": "app",
+      "light": "studio-light.png"
+    },
+    "tasks": {
+      "dark": "tasks-dark.png",
+      "kind": "app",
+      "light": "tasks-light.png"
+    },
+    "viewer": {
+      "dark": "viewer-dark.png",
+      "kind": "app",
+      "light": "viewer-light.png"
+    }
+  }
+}

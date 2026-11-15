@@ -12,17 +12,42 @@ Popup {
     padding: ZaodTheme.space1
     modal: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: ZaodTheme.space16 * 4
+    width: ZaodTheme.menuWidth
 
-    background: Rectangle {
-        color: ZaodTheme.surfaceOverlay
-        radius: ZaodTheme.radiusMd
-        border.width: ZaodTheme.hairline
-        border.color: ZaodTheme.border
+    // Menus are elevation level 2; the lite profile caps them at 1 and the
+    // shadow rectangle collapses because the level is read from the ladder.
+    readonly property var shadowSpec: ZaodTheme.elevationCap >= 2
+        ? ZaodTheme.elevation2 : ZaodTheme.elevation1
+
+    background: Item {
+        Rectangle {
+            anchors.fill: parent
+            anchors.topMargin: -menu.shadowSpec.y
+            radius: ZaodTheme.radiusMd
+            color: ZaodTheme.shadow
+            opacity: menu.shadowSpec.opacity
+            z: -1
+        }
+        Rectangle {
+            anchors.fill: parent
+            color: ZaodTheme.surfaceOverlay
+            radius: ZaodTheme.radiusMd
+            border.width: ZaodTheme.hairline
+            border.color: ZaodTheme.border
+        }
     }
 
     contentItem: Column {
-        spacing: 0
+        focus: true
+        Keys.onDownPressed: menu.move(1)
+        Keys.onUpPressed: menu.move(-1)
+        Keys.onReturnPressed: {
+            if (menu.currentIndex >= 0) {
+                menu.activated(menu.currentIndex)
+                menu.close()
+            }
+        }
+        spacing: ZaodTheme.space0
         Repeater {
             model: menu.items
             delegate: Item {
@@ -44,7 +69,10 @@ Popup {
                     anchors.fill: parent
                     radius: ZaodTheme.radiusSm
                     color: entryMouse.containsMouse || menu.currentIndex === index
-                        ? ZaodTheme.accentSubtle : "transparent"
+                        ? ZaodTheme.accentSubtle : Qt.rgba(0, 0, 0, 0)
+                    border.width: menu.currentIndex === index && menu.contentItem.activeFocus
+                        ? ZaodTheme.focusRingWidth : 0
+                    border.color: ZaodTheme.focusRing
                 }
 
                 Row {
@@ -57,16 +85,16 @@ Popup {
                         text: modelData.label || ""
                         color: modelData.enabled === false ? ZaodTheme.textDisabled : ZaodTheme.textPrimary
                         font.family: ZaodTheme.fontFamily
-                        font.pixelSize: ZaodTheme.typeBody.size
+                        font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBody.size)
                         opacity: modelData.enabled === false ? 0.6 : 1.0
                     }
-                    Item { width: parent.width - ZaodTheme.space16; height: 1 }
+                    Item { width: parent.width - ZaodTheme.space16; height: ZaodTheme.hairline }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.shortcut || ""
                         color: ZaodTheme.textTertiary
                         font.family: ZaodTheme.fontFamilyMono
-                        font.pixelSize: ZaodTheme.typeCaption.size
+                        font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
                     }
                 }
 
@@ -94,12 +122,4 @@ Popup {
         menu.currentIndex = next
     }
 
-    Keys.onDownPressed: move(1)
-    Keys.onUpPressed: move(-1)
-    Keys.onReturnPressed: {
-        if (menu.currentIndex >= 0) {
-            menu.activated(menu.currentIndex)
-            menu.close()
-        }
-    }
 }

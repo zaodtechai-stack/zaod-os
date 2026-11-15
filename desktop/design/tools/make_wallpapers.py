@@ -152,6 +152,77 @@ def render_horizon(tokens: dict, theme_name: str) -> str:
     return "\n".join(lines)
 
 
+# --------------------------------------------------------------------------
+# Flat tier: the lite-profile wallpaper. Same geometry language, no radial
+# gradients, no stacked translucent bands, no scrim pass and no sun disc, so a
+# 2 GB machine without a GPU never composites a gradient it cannot afford.
+# --------------------------------------------------------------------------
+
+
+def render_aurora_flat(tokens: dict, theme_name: str) -> str:
+    theme = tokens["themes"][theme_name]
+    grid = tokens["meta"]["grid"]
+    lines = _svg_open("Aurora flat", theme_name)
+    lines.append(f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{theme["background"]}"/>')
+    base = 24 * grid
+    for step, width in enumerate((12 * grid, 9 * grid, 6 * grid, 3 * grid)):
+        inset = base + step * width
+        radius = int(WIDTH * 0.36 - inset * 0.5)
+        lines.append(
+            f'<circle cx="{WIDTH // 2}" cy="{int(HEIGHT * 0.44)}" r="{radius}" fill="none" '
+            f'stroke="{theme["accent"]}" stroke-opacity="{0.28 - step * 0.05:.2f}" '
+            f'stroke-width="{max(grid, width // 6)}"/>'
+        )
+    lines.append("</svg>")
+    return "\n".join(lines)
+
+
+def render_lattice_flat(tokens: dict, theme_name: str) -> str:
+    theme = tokens["themes"][theme_name]
+    grid = tokens["meta"]["grid"]
+    cell = 24 * grid
+    lines = _svg_open("Lattice flat", theme_name)
+    lines.append(f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{theme["background"]}"/>')
+    size = cell // 2
+    radius = tokens["radii"]["sm"]
+    for row in range(-1, 2):
+        for column in range(-1, 2):
+            opacity = 0.18 if (row or column) else 0.28
+            cx = WIDTH // 2 + column * cell
+            cy = HEIGHT // 2 + row * cell
+            lines.append(
+                f'<rect x="{cx - size // 2}" y="{cy - size // 2}" width="{size}" height="{size}" '
+                f'rx="{radius}" fill="{theme["accent"]}" opacity="{opacity}"/>'
+            )
+    lines.append("</svg>")
+    return "\n".join(lines)
+
+
+def render_horizon_flat(tokens: dict, theme_name: str) -> str:
+    theme = tokens["themes"][theme_name]
+    grid = tokens["meta"]["grid"]
+    lines = _svg_open("Horizon flat", theme_name)
+    lines.append(f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{theme["background"]}"/>')
+    horizon = int(HEIGHT * 0.62)
+    lines.append(
+        f'<rect x="0" y="{horizon}" width="{WIDTH}" height="{HEIGHT - horizon}" '
+        f'fill="{theme["surfaceAlt"]}"/>'
+    )
+    lines.append(
+        f'<rect x="0" y="{horizon}" width="{WIDTH}" height="{max(1, grid // 2)}" '
+        f'fill="{theme["border"]}"/>'
+    )
+    lines.append("</svg>")
+    return "\n".join(lines)
+
+
+FLAT_RENDERERS = {
+    "zaod-aurora": render_aurora_flat,
+    "zaod-lattice": render_lattice_flat,
+    "zaod-horizon": render_horizon_flat,
+}
+
+
 RENDERERS = {
     "zaod-aurora": render_aurora,
     "zaod-lattice": render_lattice,
@@ -160,11 +231,16 @@ RENDERERS = {
 
 
 def outputs(tokens: dict) -> dict:
+    """Both render tiers: full, and the flat tier the lite profile selects."""
     result = {}
     for design in tokens["wallpapers"]:
         renderer = RENDERERS[design["id"]]
+        flat_renderer = FLAT_RENDERERS[design["id"]]
         for theme_name in ("light", "dark"):
             result[WALLPAPER_ROOT / f"{design['id']}-{theme_name}.svg"] = renderer(tokens, theme_name)
+            result[WALLPAPER_ROOT / f"{design['id']}-{theme_name}-flat.svg"] = flat_renderer(
+                tokens, theme_name
+            )
     return result
 
 

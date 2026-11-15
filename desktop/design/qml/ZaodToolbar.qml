@@ -29,21 +29,21 @@ Rectangle {
         anchors.left: leadingRow.right
         anchors.leftMargin: leadingRow.children.length > 0 ? ZaodTheme.space3 : ZaodTheme.space4
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 0
+        spacing: ZaodTheme.space0
 
         Text {
             text: toolbar.title
             color: ZaodTheme.textPrimary
             font.family: ZaodTheme.fontFamily
-            font.pixelSize: ZaodTheme.typeBodyStrong.size
-            font.weight: Font.DemiBold
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBodyStrong.size)
+            font.weight: ZaodTheme.typeBodyStrong.weight
             visible: toolbar.title.length > 0
         }
         Text {
             text: toolbar.subtitle
             color: ZaodTheme.textSecondary
             font.family: ZaodTheme.fontFamily
-            font.pixelSize: ZaodTheme.typeCaption.size
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             visible: toolbar.subtitle.length > 0
         }
     }

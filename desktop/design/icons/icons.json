@@ -1,0 +1,259 @@
+{
+  "meta": {
+    "generator": "desktop/design/tools/make_icons.py",
+    "source": "desktop/design/tokens/tokens.json",
+    "navSize": 24,
+    "appSize": 64,
+    "note": "Every icon ships a light and a dark file because the colours are baked from the tokens; an Image picks the file for the active theme."
+  },
+  "nav": {
+    "logo": {
+      "light": "nav/logo-light.svg",
+      "dark": "nav/logo-dark.svg"
+    },
+    "app-grid": {
+      "light": "nav/app-grid-light.svg",
+      "dark": "nav/app-grid-dark.svg"
+    },
+    "search": {
+      "light": "nav/search-light.svg",
+      "dark": "nav/search-dark.svg"
+    },
+    "settings": {
+      "light": "nav/settings-light.svg",
+      "dark": "nav/settings-dark.svg"
+    },
+    "network": {
+      "light": "nav/network-light.svg",
+      "dark": "nav/network-dark.svg"
+    },
+    "network-off": {
+      "light": "nav/network-off-light.svg",
+      "dark": "nav/network-off-dark.svg"
+    },
+    "bluetooth": {
+      "light": "nav/bluetooth-light.svg",
+      "dark": "nav/bluetooth-dark.svg"
+    },
+    "volume": {
+      "light": "nav/volume-light.svg",
+      "dark": "nav/volume-dark.svg"
+    },
+    "volume-off": {
+      "light": "nav/volume-off-light.svg",
+      "dark": "nav/volume-off-dark.svg"
+    },
+    "brightness": {
+      "light": "nav/brightness-light.svg",
+      "dark": "nav/brightness-dark.svg"
+    },
+    "night-light": {
+      "light": "nav/night-light-light.svg",
+      "dark": "nav/night-light-dark.svg"
+    },
+    "airplane": {
+      "light": "nav/airplane-light.svg",
+      "dark": "nav/airplane-dark.svg"
+    },
+    "battery": {
+      "light": "nav/battery-light.svg",
+      "dark": "nav/battery-dark.svg"
+    },
+    "battery-charging": {
+      "light": "nav/battery-charging-light.svg",
+      "dark": "nav/battery-charging-dark.svg"
+    },
+    "power": {
+      "light": "nav/power-light.svg",
+      "dark": "nav/power-dark.svg"
+    },
+    "restart": {
+      "light": "nav/restart-light.svg",
+      "dark": "nav/restart-dark.svg"
+    },
+    "lock": {
+      "light": "nav/lock-light.svg",
+      "dark": "nav/lock-dark.svg"
+    },
+    "user": {
+      "light": "nav/user-light.svg",
+      "dark": "nav/user-dark.svg"
+    },
+    "bell": {
+      "light": "nav/bell-light.svg",
+      "dark": "nav/bell-dark.svg"
+    },
+    "calendar": {
+      "light": "nav/calendar-light.svg",
+      "dark": "nav/calendar-dark.svg"
+    },
+    "chevron-right": {
+      "light": "nav/chevron-right-light.svg",
+      "dark": "nav/chevron-right-dark.svg"
+    },
+    "chevron-down": {
+      "light": "nav/chevron-down-light.svg",
+      "dark": "nav/chevron-down-dark.svg"
+    },
+    "check": {
+      "light": "nav/check-light.svg",
+      "dark": "nav/check-dark.svg"
+    },
+    "close": {
+      "light": "nav/close-light.svg",
+      "dark": "nav/close-dark.svg"
+    },
+    "plus": {
+      "light": "nav/plus-light.svg",
+      "dark": "nav/plus-dark.svg"
+    },
+    "minus": {
+      "light": "nav/minus-light.svg",
+      "dark": "nav/minus-dark.svg"
+    },
+    "edit": {
+      "light": "nav/edit-light.svg",
+      "dark": "nav/edit-dark.svg"
+    },
+    "trash": {
+      "light": "nav/trash-light.svg",
+      "dark": "nav/trash-dark.svg"
+    },
+    "download": {
+      "light": "nav/download-light.svg",
+      "dark": "nav/download-dark.svg"
+    },
+    "update": {
+      "light": "nav/update-light.svg",
+      "dark": "nav/update-dark.svg"
+    },
+    "folder": {
+      "light": "nav/folder-light.svg",
+      "dark": "nav/folder-dark.svg"
+    },
+    "terminal": {
+      "light": "nav/terminal-light.svg",
+      "dark": "nav/terminal-dark.svg"
+    },
+    "play": {
+      "light": "nav/play-light.svg",
+      "dark": "nav/play-dark.svg"
+    },
+    "image": {
+      "light": "nav/image-light.svg",
+      "dark": "nav/image-dark.svg"
+    },
+    "code": {
+      "light": "nav/code-light.svg",
+      "dark": "nav/code-dark.svg"
+    },
+    "shield": {
+      "light": "nav/shield-light.svg",
+      "dark": "nav/shield-dark.svg"
+    },
+    "info": {
+      "light": "nav/info-light.svg",
+      "dark": "nav/info-dark.svg"
+    },
+    "warning": {
+      "light": "nav/warning-light.svg",
+      "dark": "nav/warning-dark.svg"
+    },
+    "search-list": {
+      "light": "nav/search-list-light.svg",
+      "dark": "nav/search-list-dark.svg"
+    }
+  },
+  "apps": {
+    "notes": {
+      "glyph": "edit",
+      "tone": "subtle",
+      "light": "app/notes-light.svg",
+      "dark": "app/notes-dark.svg"
+    },
+    "tasks": {
+      "glyph": "check",
+      "tone": "subtle",
+      "light": "app/tasks-light.svg",
+      "dark": "app/tasks-dark.svg"
+    },
+    "calculator": {
+      "glyph": "plus",
+      "tone": "bordered",
+      "light": "app/calculator-light.svg",
+      "dark": "app/calculator-dark.svg"
+    },
+    "converter": {
+      "glyph": "update",
+      "tone": "bordered",
+      "light": "app/converter-light.svg",
+      "dark": "app/converter-dark.svg"
+    },
+    "clock": {
+      "glyph": "restart",
+      "tone": "bordered",
+      "light": "app/clock-light.svg",
+      "dark": "app/clock-dark.svg"
+    },
+    "calendar": {
+      "glyph": "calendar",
+      "tone": "subtle",
+      "light": "app/calendar-light.svg",
+      "dark": "app/calendar-dark.svg"
+    },
+    "files": {
+      "glyph": "folder",
+      "tone": "bordered",
+      "light": "app/files-light.svg",
+      "dark": "app/files-dark.svg"
+    },
+    "monitor": {
+      "glyph": "battery",
+      "tone": "bordered",
+      "light": "app/monitor-light.svg",
+      "dark": "app/monitor-dark.svg"
+    },
+    "editor": {
+      "glyph": "code",
+      "tone": "subtle",
+      "light": "app/editor-light.svg",
+      "dark": "app/editor-dark.svg"
+    },
+    "viewer": {
+      "glyph": "image",
+      "tone": "solid",
+      "light": "app/viewer-light.svg",
+      "dark": "app/viewer-dark.svg"
+    },
+    "store": {
+      "glyph": "download",
+      "tone": "solid",
+      "light": "app/store-light.svg",
+      "dark": "app/store-dark.svg"
+    },
+    "firefox": {
+      "glyph": "network",
+      "tone": "solid",
+      "light": "app/firefox-light.svg",
+      "dark": "app/firefox-dark.svg"
+    },
+    "studio": {
+      "glyph": "terminal",
+      "tone": "solid",
+      "light": "app/studio-light.svg",
+      "dark": "app/studio-dark.svg"
+    },
+    "control-center": {
+      "glyph": "settings",
+      "tone": "solid",
+      "light": "app/control-center-light.svg",
+      "dark": "app/control-center-dark.svg"
+    },
+    "oobe": {
+      "glyph": "logo",
+      "tone": "solid",
+      "light": "app/oobe-light.svg",
+      "dark": "app/oobe-dark.svg"
+    }
+  }
+}

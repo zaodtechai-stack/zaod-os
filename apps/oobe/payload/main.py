@@ -81,7 +81,7 @@ def build_window():
     appearance_layout.addLayout(accent_row)
     preview = QFrame()
     preview.setFixedHeight(70)
-    preview.setStyleSheet("QFrame { background: #eef2ff; border-radius: 10px; }")
+    preview.setObjectName("preview")
     appearance_layout.addWidget(preview)
     appearance = page(
         "Choose how it looks",

@@ -149,9 +149,19 @@ class WallpaperTests(unittest.TestCase):
     def setUp(self):
         self.tokens = tokens_to_qml.load_tokens()
 
-    def test_renders_three_designs_in_two_themes(self):
+    def test_renders_three_designs_in_two_themes_and_two_tiers(self):
         outputs = make_wallpapers.outputs(self.tokens)
-        self.assertEqual(len(outputs), 6)
+        # 3 designs x 2 themes x 2 tiers (full, flat) = 12
+        self.assertEqual(len(outputs), 12)
+
+    def test_flat_tier_is_the_lite_wallpaper(self):
+        """The flat tier exists so lite mode can skip gradients entirely."""
+        flat = make_wallpapers.render_aurora_flat(self.tokens, "light")
+        full = make_wallpapers.render_aurora(self.tokens, "light")
+        self.assertNotIn("radialGradient", flat)
+        self.assertIn("radialGradient", full)
+        self.assertLess(len(flat), len(full))
+        self.assertEqual(self.tokens["lite"]["wallpaperTier"], "flat")
 
     def test_render_is_deterministic(self):
         first = make_wallpapers.render_aurora(self.tokens, "dark")

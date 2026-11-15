@@ -13,6 +13,6 @@
 <rect x="0" y="572" width="2560" height="320" fill="#EEF1F5" opacity="0.065"/>
 <rect x="0" y="524" width="2560" height="368" fill="#EEF1F5" opacity="0.05"/>
 <rect x="0" y="892" width="2560" height="548" fill="url(#band)"/>
-<rect x="0" y="892" width="2560" height="2" fill="#848D9A" opacity="0.5"/>
+<rect x="0" y="892" width="2560" height="2" fill="#818A98" opacity="0.5"/>
 <circle cx="1843" cy="575" r="230" fill="#0067C0" opacity="0.5"/>
 </svg>

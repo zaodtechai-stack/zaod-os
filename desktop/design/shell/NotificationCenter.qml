@@ -14,7 +14,7 @@ Rectangle {
     signal clearAllRequested()
     signal eventRequested(int index)
 
-    width: 400
+    width: ZaodTheme.notificationWidth
     implicitHeight: layout.implicitHeight + ZaodTheme.space5 * 2
     radius: ZaodTheme.radiusXl
     color: ZaodTheme.surfaceOverlay
@@ -35,8 +35,8 @@ Rectangle {
                 text: Qt.formatDateTime(new Date(), "dddd d MMMM")
                 color: ZaodTheme.textPrimary
                 font.family: ZaodTheme.fontFamily
-                font.pixelSize: ZaodTheme.typeSubtitle.size
-                font.weight: Font.DemiBold
+                font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeSubtitle.size)
+                font.weight: ZaodTheme.typeSubtitle.weight
             }
             Item { Layout.fillWidth: true }
             ZaodButton {
@@ -56,23 +56,23 @@ Rectangle {
                 delegate: Row {
                     spacing: ZaodTheme.space3
                     Rectangle {
-                        width: 2
+                        width: ZaodTheme.borderThick
                         height: ZaodTheme.space6
                         color: ZaodTheme.accent
-                        radius: 1
+                        radius: ZaodTheme.hairline
                     }
                     Column {
                         Text {
                             text: modelData.time || ""
                             color: ZaodTheme.textSecondary
                             font.family: ZaodTheme.fontFamilyMono
-                            font.pixelSize: ZaodTheme.typeCaption.size
+                            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
                         }
                         Text {
                             text: modelData.title || ""
                             color: ZaodTheme.textPrimary
                             font.family: ZaodTheme.fontFamily
-                            font.pixelSize: ZaodTheme.typeBody.size
+                            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBody.size)
                         }
                     }
                 }
@@ -89,7 +89,7 @@ Rectangle {
             text: qsTr("Notifications")
             color: ZaodTheme.textSecondary
             font.family: ZaodTheme.fontFamily
-            font.pixelSize: ZaodTheme.typeCaption.size
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
         }
 
         Column {
@@ -112,13 +112,13 @@ Rectangle {
                             text: modelData.app
                             color: ZaodTheme.textTertiary
                             font.family: ZaodTheme.fontFamily
-                            font.pixelSize: ZaodTheme.typeCaption.size
+                            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
                         }
                         Text {
                             text: modelData.time
                             color: ZaodTheme.textTertiary
                             font.family: ZaodTheme.fontFamilyMono
-                            font.pixelSize: ZaodTheme.typeCaption.size
+                            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
                         }
                     }
 
@@ -137,7 +137,7 @@ Rectangle {
                 text: qsTr("Nothing needs your attention")
                 color: ZaodTheme.textTertiary
                 font.family: ZaodTheme.fontFamily
-                font.pixelSize: ZaodTheme.typeBodySm.size
+                font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBodySm.size)
                 padding: ZaodTheme.space6
             }
         }

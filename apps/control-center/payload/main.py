@@ -47,7 +47,9 @@ def build_window(center: ControlCenter | None = None):
 
     def report(message: str, error: bool = False) -> None:
         status.setText(message)
-        status.setStyleSheet("color: #b3261e;" if error else "")
+        status.setObjectName("danger" if error else "muted")
+        status.style().unpolish(status)
+        status.style().polish(status)
 
     builders = []
 

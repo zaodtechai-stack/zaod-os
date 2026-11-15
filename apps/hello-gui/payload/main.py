@@ -17,7 +17,7 @@ def build_window():
 
     window = zaodapp.base_window("Hello", 460, 240)
     message = QLabel("Hello from Zaod OS")
-    message.setStyleSheet("font-size: 26px; font-weight: 600;")
+    message.setObjectName("hero")
     message.setAlignment(Qt.AlignmentFlag.AlignCenter)
     window.content.addWidget(message)
     detail = QLabel("This window is running from a signed .zaod package.")

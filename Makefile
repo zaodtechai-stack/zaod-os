@@ -66,8 +66,15 @@ design:
 	@python3 desktop/design/tools/tokens_to_qml.py --check
 	@python3 desktop/design/tools/tokens_to_css.py --check
 	@python3 desktop/design/tools/make_wallpapers.py --check
+	@python3 desktop/design/tools/make_icons.py --check
+	@python3 desktop/design/tools/tokens_to_python.py --check
 	@python3 tests/check_design_tokens.py --verbose | tee build/logs/design.log
+	@python3 tests/check_design_drift.py | tee -a build/logs/design.log
+	@python3 desktop/design/tools/check_qml.py | tee -a build/logs/design.log
 	@python3 desktop/design/tools/scan_assets.py
+
+screenshots:
+	@python3 desktop/design/tools/capture_surfaces.py --lite
 
 initramfs: kernel
 	@bash scripts/make-initramfs.sh

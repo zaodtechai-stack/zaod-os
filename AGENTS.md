@@ -15,7 +15,7 @@ Work on `main` only, and never revert or rewrite another agent's phase.
 | 3 | Rootfs without distro package management | configs pass, artifact blocked | `python3 tests/check_rootfs_config.py` (91 checks); `make rootfs` still needs the kernel artifact and a mount-capable host |
 | 4 | Boot chain and live ISO | configs pass, ISO blocked | `python3 tests/check_boot_config.py` (88 checks); `make iso` needs rootfs + initramfs |
 | 5 | Plasma 6 desktop session | configs pass, session unverified | `python3 tests/check_desktop_config.py` (715 checks), `tests/test_lite_mode.py` |
-| 6 | Zaod Fluent design system | tokens pass, screenshots pending | `python3 tests/check_design_tokens.py` (532 checks, 42 contrast pairs), `tests/test_design_tools.py` (38 tests) |
+| 6 | Zaod Fluent design system | done: tokens, components, icons, wallpapers, 48 screenshots, a11y pass | `python3 tests/check_design_tokens.py` (1653 checks, 60 contrast pairs, min 3.08:1), `python3 tests/check_design_drift.py`, `python3 desktop/design/tools/check_qml.py` (17 surfaces), `python3 desktop/design/tools/capture_surfaces.py --lite` (48 PNGs), `tests/test_design_tools.py` (39 tests) |
 | 7 | `.zaod` format and package manager | done (one gap) | `make zaod-test` (97 tests), `make hello` |
 | 8 | Core apps, Firefox ESR, Store, Control Center | built, partly unverified | `make apps` (13 packages), `make firefox`, `make store-index`, `make smoke` |
 | 9 | Zaod Studio and project templates | done (window launch unverified) | `make studio-test` (16 tests); all five templates build byte-reproducibly, `verify --strict`, and install |
@@ -179,3 +179,17 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
 - `make rootfs-check` now fails with "Phase 2 input is missing: build/out/kernel/vmlinuz",
   so the kernel build is the single gate for phases 3, 4 and the ISO items in 10.
   A `make kernel` run was started on this host (1 core, firmware fetch included).
+
+### 2026-11-16: Phase 6 design system audit
+
+Found that the design system was largely non-functional while every gate was green:
+`ZaodTheme.qml` did not compile (generator emitted `readonly property` inside the palette
+object literals), `ZaodButton` overrode the final `hovered` property, type names were
+`typeBodysm`/`typeBodystrong`, and `scrim` was emitted opaque so the shell panels blacked out
+the desktop. All fixed, plus: token-driven `layout`/`opacity`/`focus`/`lite` blocks,
+`tokens_to_python.py` for the 13 Python apps, border tokens retuned to clear 3:1 on every
+surface, 39 nav glyphs and 15 app tiles, a flat wallpaper tier, and two new gates
+(`check_design_drift.py`, `check_qml.py`). 48 screenshots at 1366x768 in
+`docs/reports/phase-6-screenshots/`. Report: `docs/reports/phase-6.md`.
+Calendar and Files still have no app package; Firefox and every image-level item stay
+blocked until Phases 3-5 produce a bootable rootfs/ISO.

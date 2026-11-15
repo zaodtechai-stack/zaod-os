@@ -945,5 +945,5 @@
 <rect x="2448" y="1424" width="32" height="32" rx="4" fill="#4CC2FF" opacity="0.08"/>
 <rect x="2512" y="1424" width="32" height="32" rx="4" fill="#4CC2FF" opacity="0.08"/>
 <rect x="2576" y="1424" width="32" height="32" rx="4" fill="#4CC2FF" opacity="0.08"/>
-<circle cx="1280" cy="720" r="512" fill="none" stroke="#626C7B" stroke-opacity="0.25" stroke-width="4"/>
+<circle cx="1280" cy="720" r="512" fill="none" stroke="#737F90" stroke-opacity="0.25" stroke-width="4"/>
 </svg>

@@ -28,8 +28,8 @@ Item {
 
     Rectangle {
         id: track
-        width: 44
-        height: 24
+        width: ZaodTheme.space16 - ZaodTheme.space5
+        height: ZaodTheme.space6
         radius: height / 2
         anchors.verticalCenter: parent.verticalCenter
         color: control.checked ? ZaodTheme.accent
@@ -40,11 +40,11 @@ Item {
 
         Rectangle {
             id: thumb
-            width: 16
-            height: 16
+            width: ZaodTheme.space4
+            height: ZaodTheme.space4
             radius: height / 2
             y: (track.height - height) / 2
-            x: control.checked ? track.width - width - 4 : 4
+            x: control.checked ? track.width - width - ZaodTheme.space1 : ZaodTheme.space1
             color: control.checked ? ZaodTheme.onAccent : ZaodTheme.textSecondary
             Behavior on x { NumberAnimation { duration: ZaodTheme.motionFast; easing.type: Easing.OutCubic } }
         }
@@ -54,7 +54,7 @@ Item {
         anchors.fill: track
         anchors.margins: -ZaodTheme.focusRingOffset
         radius: track.radius + ZaodTheme.focusRingOffset
-        color: "transparent"
+        color: Qt.rgba(0, 0, 0, 0)
         border.width: control.activeFocus ? ZaodTheme.focusRingWidth : 0
         border.color: ZaodTheme.focusRing
     }
@@ -68,7 +68,7 @@ Item {
         visible: control.label.length > 0
         color: ZaodTheme.textPrimary
         font.family: ZaodTheme.fontFamily
-        font.pixelSize: ZaodTheme.typeBody.size
+        font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBody.size)
     }
 
     MouseArea {

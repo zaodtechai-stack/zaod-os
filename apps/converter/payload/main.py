@@ -52,7 +52,7 @@ def build_window():
     window.content.addWidget(amount)
 
     result = QLabel("1")
-    result.setStyleSheet("font-size: 30px; font-weight: 600;")
+    result.setObjectName("hero")
     window.content.addWidget(result)
 
     def refill_units() -> None:

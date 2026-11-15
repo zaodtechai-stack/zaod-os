@@ -57,21 +57,24 @@ def build_window(project_root: Path | None = None):
         def __init__(self, document):
             super().__init__(document)
             self.rules = []
+            # Highlight roles come from the token palette, so the editor is
+            # legible in both themes instead of only on a white background.
+            colours = zaodapp.palette()
             keyword = QTextCharFormat()
-            keyword.setForeground(QColor("#0b57d0"))
+            keyword.setForeground(QColor(colours["accent"]))
             keyword.setFontWeight(QFont.Weight.DemiBold)
             for word in self.KEYWORDS:
                 self.rules.append((QRegularExpression(rf"\b{word}\b"), keyword))
             string = QTextCharFormat()
-            string.setForeground(QColor("#1f6f4a"))
+            string.setForeground(QColor(colours["success"]))
             self.rules.append((QRegularExpression(r'"[^"\n]*"'), string))
             self.rules.append((QRegularExpression(r"'[^'\n]*'"), string))
             comment = QTextCharFormat()
-            comment.setForeground(QColor("#6b7280"))
+            comment.setForeground(QColor(colours["textTertiary"]))
             comment.setFontItalic(True)
             self.rules.append((QRegularExpression(r"#[^\n]*"), comment))
             number = QTextCharFormat()
-            number.setForeground(QColor("#8a4b0f"))
+            number.setForeground(QColor(colours["warning"]))
             self.rules.append((QRegularExpression(r"\b[0-9]+\b"), number))
 
         def highlightBlock(self, text: str) -> None:

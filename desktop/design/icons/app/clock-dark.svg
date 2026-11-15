@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img">
+<title>Zaod clock application icon (dark)</title>
+<rect x="4" y="4" width="56" height="56" rx="12" fill="#1B1E23" stroke="#737F90" stroke-width="1"/>
+<g transform="translate(8.0 8.0) scale(2.0)" fill="none" stroke="#4CC2FF" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 12a8 8 0 1 1-2.6-5.9"/>
+<path d="M20 3.5V9h-5.5"/>
+</g>
+</svg>

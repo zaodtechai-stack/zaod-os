@@ -23,7 +23,7 @@ Rectangle {
     signal settingsRequested()
     signal lockRequested()
 
-    width: 380
+    width: ZaodTheme.quickSettingsWidth
     implicitHeight: column.implicitHeight + ZaodTheme.space5 * 2
     radius: ZaodTheme.radiusXl
     color: ZaodTheme.surfaceOverlay
@@ -33,6 +33,7 @@ Rectangle {
     component Tile: Rectangle {
         id: tile
         property string glyph: ""
+        property string iconName: ""
         property string text: ""
         property bool checked: false
         signal clicked()
@@ -41,17 +42,39 @@ Rectangle {
         border.width: ZaodTheme.hairline
         border.color: tile.checked ? ZaodTheme.accent : ZaodTheme.border
         implicitHeight: ZaodTheme.space12
-        implicitWidth: ZaodTheme.space16 * 1.6
+        implicitWidth: ZaodTheme.space16 + ZaodTheme.space6
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: tile.text
+        Accessible.checkable: true
+        Accessible.checked: tile.checked
+        Accessible.onPressAction: tile.clicked()
+        Keys.onSpacePressed: tile.clicked()
+        Keys.onReturnPressed: tile.clicked()
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -ZaodTheme.focusRingOffset
+            radius: tile.radius + ZaodTheme.focusRingOffset
+            color: Qt.rgba(0, 0, 0, 0)
+            border.width: tile.activeFocus ? ZaodTheme.focusRingWidth : 0
+            border.color: ZaodTheme.focusRing
+            visible: tile.activeFocus
+        }
 
         Row {
             anchors.centerIn: parent
             spacing: ZaodTheme.space2
-            Text { text: tile.glyph; color: tile.checked ? ZaodTheme.onAccent : ZaodTheme.textPrimary; font.pixelSize: 14 }
+            ZaodIcon {
+                name: tile.iconName
+                size: ZaodTheme.scaled(ZaodTheme.iconNav)
+                fallbackGlyph: tile.glyph
+            }
             Text {
                 text: tile.text
                 color: tile.checked ? ZaodTheme.onAccent : ZaodTheme.textPrimary
                 font.family: ZaodTheme.fontFamily
-                font.pixelSize: ZaodTheme.typeCaption.size
+                font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             }
         }
 
@@ -59,7 +82,10 @@ Rectangle {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: tile.clicked()
+            onClicked: {
+                tile.forceActiveFocus()
+                tile.clicked()
+            }
         }
     }
 
@@ -77,7 +103,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             text: sliderRow.glyph
             color: ZaodTheme.textSecondary
-            font.pixelSize: 12
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBodySm.size)
         }
 
         Rectangle {
@@ -189,7 +215,7 @@ Rectangle {
                     : qsTr("%1% battery").arg(quick.batteryPercent)
                 color: ZaodTheme.textSecondary
                 font.family: ZaodTheme.fontFamily
-                font.pixelSize: ZaodTheme.typeCaption.size
+                font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             }
             Item { Layout.fillWidth: true }
             ZaodButton {
@@ -211,7 +237,7 @@ Rectangle {
                 : qsTr("No network connection")
             color: ZaodTheme.textTertiary
             font.family: ZaodTheme.fontFamily
-            font.pixelSize: ZaodTheme.typeCaption.size
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             elide: Text.ElideRight
         }
     }

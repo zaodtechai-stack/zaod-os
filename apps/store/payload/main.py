@@ -68,7 +68,9 @@ def build_window(store: StoreBackend | None = None):
 
     def report(message: str, error: bool = False) -> None:
         status.setText(message)
-        status.setStyleSheet("color: #b3261e;" if error else "")
+        status.setObjectName("danger" if error else "muted")
+        status.style().unpolish(status)
+        status.style().polish(status)
 
     def describe(item: dict) -> str:
         permissions = ", ".join(backend.permission_summary(item))

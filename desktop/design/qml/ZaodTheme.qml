@@ -11,6 +11,33 @@ QtObject {
     property string mode: "dark"
     readonly property bool isDark: mode === "dark"
 
+    // Lite profile: 1366x768 / 2 GB / 2 cores. Set by the session, never by an app.
+    property bool lite: false
+    readonly property int elevationCap: lite ? 1 : 3
+    readonly property bool allowBlur: !lite && false
+    readonly property bool allowGlass: !lite && false
+    readonly property bool allowAnimation: !lite && false
+    readonly property bool allowPreviews: !lite && false
+    readonly property bool allowThumbnails: false
+
+    // Text scale: 1.0 to 1.5. Every pixelSize goes through scaled().
+    property real fontScale: 1.0
+    readonly property real minFontScale: 1.0
+    readonly property real maxFontScale: 1.5
+
+    function scaled(pixels) {
+        return Math.round(pixels * fontScale)
+    }
+
+    function lineHeight(step) {
+        return Math.round(step.lineHeight * fontScale)
+    }
+
+    // Motion: 0 ms whenever the lite profile or the session disables animation.
+    function duration(milliseconds) {
+        return allowAnimation ? milliseconds : 0
+    }
+
     readonly property int grid: 4
 
     readonly property int space0: 0
@@ -41,6 +68,31 @@ QtObject {
     readonly property int focusRingWidth: 2
     readonly property int focusRingOffset: 2
     readonly property int minTargetSize: 32
+    readonly property int minPointerTarget: 28
+
+    readonly property int taskbarHeight: 44
+    readonly property int taskbarHeightLite: 40
+    readonly property int taskbarItemCount: 8
+    readonly property int startMenuWidth: 560
+    readonly property int startMenuHeight: 600
+    readonly property int quickSettingsWidth: 380
+    readonly property int notificationWidth: 400
+    readonly property int menuWidth: 256
+    readonly property int windowChromeHeight: 40
+    readonly property int windowMinWidth: 480
+    readonly property int windowMinHeight: 320
+    readonly property int iconNav: 24
+    readonly property int iconApp: 64
+    readonly property int iconGridCell: 96
+    readonly property int iconStartMenu: 28
+    readonly property int iconTaskbar: 20
+
+    readonly property real opacityGlass: 0.92
+    readonly property real opacityScrim: 0.48
+    readonly property real opacityHover: 0.08
+    readonly property real opacityPressed: 0.12
+    readonly property real opacityDisabled: 0.45
+    readonly property real opacityHint: 0.6
 
     readonly property int motionFast: 120
     readonly property int motionBase: 160
@@ -52,12 +104,12 @@ QtObject {
     readonly property string fontFamilyMono: "JetBrains Mono"
 
     readonly property var typeCaption: ({ size: 11, lineHeight: 16, weight: 400, tracking: 0.2 })
-    readonly property var typeBodysm: ({ size: 12, lineHeight: 16, weight: 400, tracking: 0.1 })
+    readonly property var typeBodySm: ({ size: 12, lineHeight: 16, weight: 400, tracking: 0.1 })
     readonly property var typeBody: ({ size: 14, lineHeight: 20, weight: 400, tracking: 0.0 })
-    readonly property var typeBodystrong: ({ size: 14, lineHeight: 20, weight: 600, tracking: 0.0 })
+    readonly property var typeBodyStrong: ({ size: 14, lineHeight: 20, weight: 600, tracking: 0.0 })
     readonly property var typeSubtitle: ({ size: 16, lineHeight: 24, weight: 600, tracking: 0.0 })
     readonly property var typeTitle: ({ size: 20, lineHeight: 28, weight: 600, tracking: -0.1 })
-    readonly property var typeTitlelg: ({ size: 24, lineHeight: 32, weight: 600, tracking: -0.2 })
+    readonly property var typeTitleLg: ({ size: 24, lineHeight: 32, weight: 600, tracking: -0.2 })
     readonly property var typeDisplay: ({ size: 32, lineHeight: 40, weight: 600, tracking: -0.4 })
 
     readonly property var elevation0: ({ blur: 0, y: 0, opacity: 0.0 })
@@ -68,55 +120,55 @@ QtObject {
 
     // Palette: light and dark are both generated so a theme switch is instant.
     readonly property var lightPalette: ({
-    readonly property color background: "#F6F7F9"
-    readonly property color surface: "#FFFFFF"
-    readonly property color surfaceAlt: "#EEF1F5"
-    readonly property color surfaceRaised: "#FFFFFF"
-    readonly property color surfaceOverlay: "#FFFFFF"
-    readonly property color border: "#848D9A"
-    readonly property color borderStrong: "#5F6875"
-    readonly property color textPrimary: "#101418"
-    readonly property color textSecondary: "#4A5260"
-    readonly property color textTertiary: "#5F6875"
-    readonly property color textDisabled: "#8A93A0"
-    readonly property color accent: "#0067C0"
-    readonly property color accentHover: "#005BA8"
-    readonly property color accentPressed: "#004F91"
-    readonly property color accentSubtle: "#E6F0FB"
-    readonly property color onAccent: "#FFFFFF"
-    readonly property color danger: "#B3261E"
-    readonly property color onDanger: "#FFFFFF"
-    readonly property color success: "#1B6B3A"
-    readonly property color warning: "#7A5900"
-    readonly property color focusRing: "#0067C0"
-    readonly property color shadow: "#0B1B2B"
-    readonly property color scrim: "#0B1B2B"
+        background: "#F6F7F9",
+        surface: "#FFFFFF",
+        surfaceAlt: "#EEF1F5",
+        surfaceRaised: "#FFFFFF",
+        surfaceOverlay: "#FFFFFF",
+        border: "#818A98",
+        borderStrong: "#5F6875",
+        textPrimary: "#101418",
+        textSecondary: "#4A5260",
+        textTertiary: "#5F6875",
+        textDisabled: "#8A93A0",
+        accent: "#0067C0",
+        accentHover: "#005BA8",
+        accentPressed: "#004F91",
+        accentSubtle: "#E6F0FB",
+        onAccent: "#FFFFFF",
+        danger: "#B3261E",
+        onDanger: "#FFFFFF",
+        success: "#1B6B3A",
+        warning: "#7A5900",
+        focusRing: "#0067C0",
+        shadow: "#0B1B2B",
+        scrim: "#0B1B2B"
     })
 
     readonly property var darkPalette: ({
-    readonly property color background: "#14161A"
-    readonly property color surface: "#1B1E23"
-    readonly property color surfaceAlt: "#23272E"
-    readonly property color surfaceRaised: "#282D35"
-    readonly property color surfaceOverlay: "#2E343D"
-    readonly property color border: "#626C7B"
-    readonly property color borderStrong: "#8A93A0"
-    readonly property color textPrimary: "#F2F4F7"
-    readonly property color textSecondary: "#B4BCC8"
-    readonly property color textTertiary: "#9CA6B3"
-    readonly property color textDisabled: "#6C7684"
-    readonly property color accent: "#4CC2FF"
-    readonly property color accentHover: "#6BCEFF"
-    readonly property color accentPressed: "#8AD8FF"
-    readonly property color accentSubtle: "#16303F"
-    readonly property color onAccent: "#101418"
-    readonly property color danger: "#FFB4AB"
-    readonly property color onDanger: "#3B0906"
-    readonly property color success: "#7DDC9B"
-    readonly property color warning: "#F5C451"
-    readonly property color focusRing: "#4CC2FF"
-    readonly property color shadow: "#000000"
-    readonly property color scrim: "#000000"
+        background: "#14161A",
+        surface: "#1B1E23",
+        surfaceAlt: "#23272E",
+        surfaceRaised: "#282D35",
+        surfaceOverlay: "#2E343D",
+        border: "#737F90",
+        borderStrong: "#8A93A0",
+        textPrimary: "#F2F4F7",
+        textSecondary: "#B4BCC8",
+        textTertiary: "#9CA6B3",
+        textDisabled: "#6C7684",
+        accent: "#4CC2FF",
+        accentHover: "#6BCEFF",
+        accentPressed: "#8AD8FF",
+        accentSubtle: "#16303F",
+        onAccent: "#101418",
+        danger: "#FFB4AB",
+        onDanger: "#3B0906",
+        success: "#7DDC9B",
+        warning: "#F5C451",
+        focusRing: "#4CC2FF",
+        shadow: "#000000",
+        scrim: "#000000"
     })
 
     readonly property var palette: isDark ? darkPalette : lightPalette
@@ -143,7 +195,9 @@ QtObject {
     readonly property color warning: palette.warning
     readonly property color focusRing: palette.focusRing
     readonly property color shadow: palette.shadow
-    readonly property color scrim: palette.scrim
+
+    readonly property color scrimBase: palette.scrim
+    readonly property color scrim: Qt.rgba(scrimBase.r, scrimBase.g, scrimBase.b, opacityScrim)
 
     function withAlpha(color, alpha) {
         return Qt.rgba(color.r, color.g, color.b, alpha)

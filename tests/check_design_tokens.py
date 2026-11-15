@@ -168,6 +168,41 @@ def check_structure(tokens: dict, report: Report) -> None:
                 report.check(False, f"{theme_name}.{role} is a hex colour", str(exc))
 
     report.check(len(tokens["wallpapers"]) == 3, "three wallpapers are declared")
+    for name, design in ((d["id"], d) for d in tokens["wallpapers"]):
+        report.check("flat" in design, f"wallpaper {name} declares its flat lite variant")
+
+    # Shell geometry is a token too: it sat hardcoded in the QML before 0.6.1.
+    layout = tokens["layout"]
+    for key, value in layout.items():
+        report.check(
+            isinstance(value, int) and value % grid == 0,
+            f"layout {key} sits on the {grid} px grid",
+            str(value),
+        )
+    report.check(layout["taskbarHeightLite"] <= layout["taskbarHeight"], "lite taskbar is not taller")
+
+    # Lite profile: every expensive effect must be switchable off.
+    lite = tokens["lite"]
+    for flag in ("allowBlur", "allowGlass", "allowAnimation", "allowPreviews"):
+        report.check(lite.get(flag) is False, f"lite profile disables {flag}")
+    report.check(lite["elevationCap"] <= 1, "lite profile caps elevation at 1")
+    report.check(
+        tokens["elevationUsage"]["maxComponentLevel"] <= 3,
+        "components may not use elevation 4",
+    )
+
+    # Text scale: 100-150% is the accessibility contract, so both ends must exist.
+    scale_range = tokens["typography"]["scaleRange"]
+    report.check(scale_range["min"] <= 100, "text scale starts at 100%", str(scale_range["min"]))
+    report.check(scale_range["max"] >= 150, "text scale reaches 150%", str(scale_range["max"]))
+    report.check(
+        scale_range["min"] <= scale_range["reflowAt"] <= scale_range["max"],
+        "text reflow point is inside the declared range",
+    )
+
+    # Hit targets: the brief asks for 28 px minimum, the token set promises more.
+    report.check(tokens["focus"]["minTargetSize"] >= 28, "keyboard target is at least 28 px")
+    report.check(tokens["focus"]["minPointerTarget"] >= 28, "pointer target is at least 28 px")
 
 
 def check_contrast(tokens: dict, report: Report, verbose: bool) -> list:
@@ -197,8 +232,10 @@ def check_contrast(tokens: dict, report: Report, verbose: bool) -> list:
 
 def check_generated(tokens: dict, report: Report) -> None:
     sys.path.insert(0, str(DESIGN_ROOT / "tools"))
+    import make_icons
     import make_wallpapers
     import tokens_to_css
+    import tokens_to_python
     import tokens_to_qml
 
     report.check(not tokens_to_qml.is_stale(tokens), "ZaodTheme.qml is up to date with tokens.json")
@@ -206,6 +243,12 @@ def check_generated(tokens: dict, report: Report) -> None:
         report.check(False, "generated GTK css is up to date", str(path.relative_to(REPO_ROOT)))
     for path in make_wallpapers.stale_paths(tokens):
         report.check(False, "generated wallpaper is up to date", str(path.relative_to(REPO_ROOT)))
+    report.check(
+        not tokens_to_python.is_stale(tokens),
+        "apps/lib/zaod_tokens.py is up to date with tokens.json",
+    )
+    for path in make_icons.stale_paths(tokens):
+        report.check(False, "generated icon is up to date", str(path.relative_to(REPO_ROOT)))
 
     qml_text = tokens_to_qml.OUTPUT_PATH.read_text(encoding="utf-8")
     for role in REQUIRED_COLOR_ROLES:

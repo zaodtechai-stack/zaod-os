@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img">
+<title>Zaod editor application icon (light)</title>
+<rect x="4" y="4" width="56" height="56" rx="12" fill="#E6F0FB" stroke="#0067C0" stroke-width="1"/>
+<g transform="translate(8.0 8.0) scale(2.0)" fill="none" stroke="#0067C0" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round">
+<path d="M8.5 7.5 3.5 12l5 4.5"/>
+<path d="M15.5 7.5 20.5 12l-5 4.5"/>
+<line x1="13.5" y1="5" x2="10.5" y2="19"/>
+</g>
+</svg>

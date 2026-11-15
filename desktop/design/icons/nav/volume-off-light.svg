@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img">
+<title>Zaod volume-off (light)</title>
+<g fill="none" stroke="#101418" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 9.5h3.5L13 5v14l-5.5-4.5H4z"/>
+<line x1="16.5" y1="9.5" x2="21" y2="14"/>
+<line x1="21" y1="9.5" x2="16.5" y2="14"/>
+</g>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img">
+<title>Zaod network (dark)</title>
+<g fill="none" stroke="#F2F4F7" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<path d="M2.5 8.5a14 14 0 0 1 19 0"/>
+<path d="M5.5 12a9.5 9.5 0 0 1 13 0"/>
+<path d="M8.5 15.5a5 5 0 0 1 7 0"/>
+</g>
+<g fill="#F2F4F7" stroke="none">
+<path d="M12 19.5a1.6 1.6 0 1 0 0 .1z"/>
+</g>
+</svg>

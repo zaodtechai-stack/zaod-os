@@ -23,11 +23,11 @@ def build_window():
 
     window = zaodapp.base_window("Clock", 420, 320)
     time_label = QLabel("--:--:--")
-    time_label.setStyleSheet("font-size: 44px; font-weight: 600;")
+    time_label.setObjectName("metric")
     window.content.addWidget(time_label)
 
     stopwatch_label = QLabel("00:00")
-    stopwatch_label.setStyleSheet("font-size: 30px;")
+    stopwatch_label.setObjectName("hero")
     window.content.addWidget(stopwatch_label)
 
     tick = QTimer(window)

@@ -20,8 +20,8 @@ Rectangle {
         return apps.filter(function (app) { return app.name.toLowerCase().indexOf(needle) >= 0 })
     }
 
-    width: 560
-    height: 600
+    width: ZaodTheme.startMenuWidth
+    height: ZaodTheme.startMenuHeight
     radius: ZaodTheme.radiusXl
     color: ZaodTheme.surfaceOverlay
     border.width: ZaodTheme.hairline
@@ -44,7 +44,7 @@ Rectangle {
             Layout.fillWidth: true
             placeholderText: qsTr("Search apps and settings")
             font.family: ZaodTheme.fontFamily
-            font.pixelSize: ZaodTheme.typeBody.size
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeBody.size)
             color: ZaodTheme.textPrimary
             placeholderTextColor: ZaodTheme.textTertiary
             selectByMouse: true
@@ -64,7 +64,7 @@ Rectangle {
             text: qsTr("Pinned")
             color: ZaodTheme.textSecondary
             font.family: ZaodTheme.fontFamily
-            font.pixelSize: ZaodTheme.typeCaption.size
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             visible: startMenu.query.length === 0
         }
 
@@ -91,17 +91,21 @@ Rectangle {
                     anchors.margins: ZaodTheme.space1
                     radius: ZaodTheme.radiusLg
                     color: GridView.isCurrentItem || area.containsMouse
-                        ? ZaodTheme.surfaceAlt : "transparent"
+                        ? ZaodTheme.surfaceAlt : Qt.rgba(0, 0, 0, 0)
+                    border.width: GridView.isCurrentItem && grid.activeFocus
+                        ? ZaodTheme.focusRingWidth : 0
+                    border.color: ZaodTheme.focusRing
                 }
 
                 Column {
                     anchors.centerIn: parent
                     spacing: ZaodTheme.space2
-                    Text {
+                    ZaodIcon {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: modelData.icon || "\u25A3"
-                        color: ZaodTheme.textPrimary
-                        font.pixelSize: 28
+                        name: modelData.iconName || ""
+                        application: true
+                        size: ZaodTheme.scaled(ZaodTheme.iconStartMenu)
+                        fallbackGlyph: modelData.icon || "\u25A3"
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -111,7 +115,7 @@ Rectangle {
                         horizontalAlignment: Text.AlignHCenter
                         color: ZaodTheme.textPrimary
                         font.family: ZaodTheme.fontFamily
-                        font.pixelSize: ZaodTheme.typeCaption.size
+                        font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
                     }
                 }
 
@@ -135,7 +139,7 @@ Rectangle {
                 text: qsTr("Recent")
                 color: ZaodTheme.textSecondary
                 font.family: ZaodTheme.fontFamily
-                font.pixelSize: ZaodTheme.typeCaption.size
+                font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             }
             Repeater {
                 model: startMenu.recent

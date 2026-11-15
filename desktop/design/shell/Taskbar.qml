@@ -18,9 +18,13 @@ Rectangle {
     signal notificationsRequested()
 
     implicitWidth: layout.implicitWidth + ZaodTheme.space4 * 2
-    implicitHeight: liteMode ? 40 : 44
+    implicitHeight: (ZaodTheme.lite || liteMode) ? ZaodTheme.taskbarHeightLite : ZaodTheme.taskbarHeight
     radius: ZaodTheme.radiusLg
-    color: Qt.rgba(ZaodTheme.surface.r, ZaodTheme.surface.g, ZaodTheme.surface.b, 0.92)
+    // Glass needs a compositor blur behind it; the lite profile and any host
+    // without blur gets the opaque surface instead of a washed-out panel.
+    color: ZaodTheme.allowGlass
+        ? Qt.rgba(ZaodTheme.surface.r, ZaodTheme.surface.g, ZaodTheme.surface.b, ZaodTheme.opacityGlass)
+        : ZaodTheme.surface
     border.width: ZaodTheme.hairline
     border.color: ZaodTheme.border
 
@@ -47,28 +51,52 @@ Rectangle {
                     anchors.fill: parent
                     radius: ZaodTheme.radiusMd
                     color: area.containsMouse || taskbar.activeIndex === index
-                        ? ZaodTheme.surfaceAlt : "transparent"
+                        ? ZaodTheme.surfaceAlt : Qt.rgba(0, 0, 0, 0)
                     Behavior on color {
                         ColorAnimation { duration: ZaodTheme.motionFast; easing.type: Easing.OutCubic }
                     }
                 }
 
-                Text {
+                ZaodIcon {
                     anchors.centerIn: parent
-                    text: modelData.icon || "\u25A3"
-                    color: ZaodTheme.textPrimary
-                    font.pixelSize: 18
+                    name: modelData.iconName || ""
+                    application: true
+                    size: ZaodTheme.scaled(ZaodTheme.iconTaskbar)
+                    fallbackGlyph: modelData.icon || "\u25A3"
                 }
 
                 Rectangle {
                     anchors.bottom: parent.bottom
                     anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottomMargin: 2
+                    anchors.bottomMargin: ZaodTheme.hairline
                     width: taskbar.running.indexOf(modelData.id) >= 0 ? ZaodTheme.space1 * 4 : 0
-                    height: 2
-                    radius: 1
+                    height: ZaodTheme.borderThick
+                    radius: ZaodTheme.hairline
                     color: ZaodTheme.accent
                     Behavior on width { NumberAnimation { duration: ZaodTheme.motionFast } }
+                }
+
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.name || modelData.id
+                Accessible.onPressAction: activateItem()
+                Keys.onSpacePressed: activateItem()
+                Keys.onReturnPressed: activateItem()
+
+                // Focus is drawn as a token ring, never as a colour change.
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -ZaodTheme.focusRingOffset
+                    radius: ZaodTheme.radiusMd + ZaodTheme.focusRingOffset
+                    color: Qt.rgba(0, 0, 0, 0)
+                    border.width: parent.activeFocus ? ZaodTheme.focusRingWidth : 0
+                    border.color: ZaodTheme.focusRing
+                    visible: parent.activeFocus
+                }
+
+                function activateItem() {
+                    taskbar.activeIndex = index
+                    taskbar.appActivated(modelData.id)
                 }
 
                 MouseArea {
@@ -77,8 +105,8 @@ Rectangle {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        taskbar.activeIndex = index
-                        taskbar.appActivated(modelData.id)
+                        parent.forceActiveFocus()
+                        parent.activateItem()
                     }
                 }
             }

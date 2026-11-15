@@ -53,7 +53,7 @@ def build_window():
     display = QLineEdit()
     display.setPlaceholderText("0")
     display.setAlignment(Qt.AlignmentFlag.AlignRight)
-    display.setStyleSheet("font-size: 26px; padding: 10px;")
+    display.setObjectName("calcDisplay")
     window.content.addWidget(display)
 
     grid = QGridLayout()

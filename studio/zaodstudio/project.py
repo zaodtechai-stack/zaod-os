@@ -36,7 +36,11 @@ PROJECT_FILE = "zaod.project.json"
 PROJECT_FORMAT = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9]*(\.[a-z0-9][a-z0-9_-]*)+$")
 IGNORED = {".git", "build", "__pycache__", ".venv", "node_modules"}
-ACCENTS = ("#0b57d0", "#1f6f4a", "#8a4b0f", "#3b3b8f", "#0f6b6b", "#7a1f5c")
+# Icon tones are colour roles, never literals: the accent family is the only
+# set with a declared onAccent contrast pair, so a generated icon stays legible
+# in both themes. Falls back to currentColor when the token module is absent
+# (Studio run straight from a checkout rather than from a .zaod package).
+ICON_TONE_ROLES = ("accent", "accentHover", "accentPressed")
 
 
 class ProjectError(RuntimeError):
@@ -55,15 +59,35 @@ class BuildResult:
         return self.package.stat().st_size
 
 
+def _tokens():
+    """The generated token module, or None when Studio runs from a checkout."""
+    try:
+        import zaod_tokens
+    except ImportError:
+        return None
+    return zaod_tokens
+
+
 def icon_svg(app_id: str) -> str:
-    """Deterministic placeholder icon derived from the app id."""
-    accent = ACCENTS[sum(app_id.encode()) % len(ACCENTS)]
+    """Deterministic placeholder icon derived from the app id.
+
+    The tile colour is a token role, never a literal, so a generated project
+    icon matches the design system and stays legible in both themes.
+    """
+    tokens = _tokens()
+    if tokens is None:
+        tile, letter_colour, radius = "currentColor", "currentColor", 12
+    else:
+        colours = tokens.role_map("light")
+        tile = colours[ICON_TONE_ROLES[sum(app_id.encode()) % len(ICON_TONE_ROLES)]]
+        letter_colour = colours["onAccent"]
+        radius = tokens.RADII["lg"]
     letter = app_id.split(".")[-1][:1].upper() or "Z"
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">\n'
-        f'  <rect x="4" y="4" width="56" height="56" rx="14" fill="{accent}"/>\n'
+        f'  <rect x="4" y="4" width="56" height="56" rx="{radius}" fill="{tile}"/>\n'
         '  <text x="32" y="42" font-family="Inter, sans-serif" font-size="28" font-weight="600" '
-        f'fill="#ffffff" text-anchor="middle">{letter}</text>\n'
+        f'fill="{letter_colour}" text-anchor="middle">{letter}</text>\n'
         "</svg>\n"
     )
 

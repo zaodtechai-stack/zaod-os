@@ -15,15 +15,15 @@ Control {
     readonly property color _background: {
         switch (variant) {
         case ZaodButton.Variant.Primary:
-            return pressed ? ZaodTheme.accentPressed
-                : hovered ? ZaodTheme.accentHover : ZaodTheme.accent
+            return isPressed ? ZaodTheme.accentPressed
+                : isHovered ? ZaodTheme.accentHover : ZaodTheme.accent
         case ZaodButton.Variant.Destructive:
             return ZaodTheme.danger
         case ZaodButton.Variant.Quiet:
-            return hovered ? ZaodTheme.surfaceAlt : "transparent"
+            return isHovered ? ZaodTheme.surfaceAlt : "transparent"
         default:
-            return pressed ? ZaodTheme.surfaceAlt
-                : hovered ? ZaodTheme.surfaceRaised : ZaodTheme.surface
+            return isPressed ? ZaodTheme.surfaceAlt
+                : isHovered ? ZaodTheme.surfaceRaised : ZaodTheme.surface
         }
     }
 
@@ -34,14 +34,15 @@ Control {
     }
 
     readonly property color _border: {
-        if (variant === ZaodButton.Variant.Quiet) return "transparent"
+        if (variant === ZaodButton.Variant.Quiet) return Qt.rgba(0, 0, 0, 0)
         if (variant === ZaodButton.Variant.Primary) return ZaodTheme.accent
         if (variant === ZaodButton.Variant.Destructive) return ZaodTheme.danger
         return ZaodTheme.border
     }
 
-    property bool hovered: hoverArea.containsMouse
-    property bool pressed: tapArea.pressed
+    // `Control` owns a FINAL `hovered`; the component tracks its own state.
+    readonly property bool isHovered: hoverArea.containsMouse || hoverHandler.hovered
+    readonly property bool isPressed: tapHandler.pressed
     signal clicked()
 
     // Full keyboard support: Space/Enter activate, Tab moves on.
@@ -55,6 +56,7 @@ Control {
     opacity: enabled ? 1.0 : 0.45
     enabled: !loading
 
+    hoverEnabled: true
     Keys.onSpacePressed: control.clicked()
     Keys.onReturnPressed: control.clicked()
 
@@ -74,7 +76,7 @@ Control {
             visible: control.loading
             text: "\u25CF"
             color: control._foreground
-            font.pixelSize: 10
+            font.pixelSize: ZaodTheme.scaled(ZaodTheme.typeCaption.size)
             SequentialAnimation on opacity {
                 running: control.loading
                 loops: Animation.Infinite
@@ -111,5 +113,6 @@ Control {
         onClicked: control.clicked()
     }
 
-    TapHandler { id: tapArea }
+    HoverHandler { id: hoverHandler }
+    TapHandler { id: tapHandler }
 }

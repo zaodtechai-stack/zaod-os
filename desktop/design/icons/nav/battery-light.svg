@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img">
+<title>Zaod battery (light)</title>
+<g fill="none" stroke="#101418" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<rect x="2.5" y="8" width="17" height="8" rx="2.5"/>
+<line x1="21.5" y1="10.5" x2="21.5" y2="13.5"/>
+<line x1="5" y1="10.5" x2="5" y2="13.5"/>
+</g>
+</svg>
