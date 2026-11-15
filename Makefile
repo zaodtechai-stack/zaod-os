@@ -25,9 +25,11 @@ help:
 	  '  sandbox-proof- prove the bubblewrap isolation rules' \
 	  '  clean        - remove generated build outputs'
 
+# The host report is evidence, not a tracked deliverable: write it to the log so
+# running make doctor never overwrites the committed docs/reports/phase-1.md.
 doctor:
-	@mkdir -p build/logs docs/reports
-	@bash scripts/doctor.sh | tee build/logs/doctor.log docs/reports/phase-1.md
+	@mkdir -p build/logs
+	@bash scripts/doctor.sh | tee build/logs/doctor.log
 
 fetch:
 	@mkdir -p build/cache
@@ -70,10 +72,19 @@ zaod-test:
 
 zaod-lint:
 	@ruff check .
-	@shellcheck scripts/*.sh tests/*.sh apps/*/build.sh apps/*/*.sh
+	@shellcheck scripts/*.sh tests/*.sh tests/qemu*.sh kernel/build.sh apps/*/build.sh apps/*/*.sh
 
+# Exit 3 means the filesystem half ran but this host cannot create a network
+# namespace, so network isolation stays unproven. Surface that instead of green.
 sandbox-proof:
-	@bash tests/sandbox-proof.sh
+	@bash tests/sandbox-proof.sh || { \
+	  rc=$$?; \
+	  if [ $$rc -eq 3 ]; then \
+	    printf '%s\n' 'sandbox-proof: INCOMPLETE - filesystem isolation proven, network isolation not exercised on this host.' >&2; \
+	    exit 3; \
+	  fi; \
+	  exit $$rc; \
+	}
 
 hello:
 	@bash apps/hello-gui/build.sh $(if $(ZAOD_KEY),$(ZAOD_KEY),)

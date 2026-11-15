@@ -2,6 +2,9 @@
 # Prove the Phase 7 sandbox rules: a package without the network permission
 # cannot reach the network or read host files, and adding the permission
 # changes that for the same payload.
+#
+# Exit codes: 0 full proof, 3 filesystem proof only (host has no network
+# namespaces), 1 proof failed.
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -61,8 +64,9 @@ make_app "net" "true"
 net_namespaces=1
 if ! bwrap --unshare-net --ro-bind / / true >/dev/null 2>&1; then
   net_namespaces=0
-  echo "NOTE: this host cannot create a network namespace; the network line below is"
-  echo "      shown for the filesystem-only probe. Run on a Zaod system for the full proof."
+  echo "NOTE: this host cannot create a network namespace, so the network half of"
+  echo "      this proof is SKIPPED and the exit code is 3. Run it on a Zaod system"
+  echo "      or any host that grants namespace creation for the full proof."
   echo
 fi
 
@@ -81,7 +85,35 @@ run_probe() {
 }
 
 echo "=== zaod run org.zaod.probe-nonet (no network permission) ==="
-run_probe org.zaod.probe-nonet
+nonet_output=$(run_probe org.zaod.probe-nonet)
+printf '%s\n' "$nonet_output"
 echo
 echo "=== zaod run org.zaod.probe-net (network permission) ==="
-run_probe org.zaod.probe-net
+net_output=$(run_probe org.zaod.probe-net)
+printf '%s\n' "$net_output"
+
+failed=0
+check() {
+  local label=$1 haystack=$2 needle=$3
+  if ! grep -q "$needle" <<<"$haystack"; then
+    printf 'FAIL: %s (expected %s)\n' "$label" "$needle" >&2
+    failed=1
+  fi
+}
+
+check "host /etc/shadow is hidden from the app" "$nonet_output" 'host-etc-shadow=hidden'
+check "host home directory is hidden from the app" "$nonet_output" 'host-home=hidden'
+if [ "$net_namespaces" = 1 ]; then
+  check "no-network package cannot reach the network" "$nonet_output" 'network=blocked'
+  check "package with the network permission can reach the network" "$net_output" 'network=reachable'
+fi
+
+if [ "$failed" = 1 ]; then
+  echo "sandbox proof: FAILED" >&2
+  exit 1
+fi
+if [ "$net_namespaces" = 0 ]; then
+  echo "sandbox proof: INCOMPLETE (filesystem isolation proven, network isolation not exercised)" >&2
+  exit 3
+fi
+echo "sandbox proof: PASSED (filesystem and network isolation)"
