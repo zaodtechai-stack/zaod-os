@@ -30,7 +30,7 @@ from pathlib import Path
 DESIGN_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DESIGN_ROOT / "tools"))
 
-from tokens_to_qml import load_tokens  # noqa: E402
+from tokens_to_qml import load_tokens
 
 ICON_ROOT = DESIGN_ROOT / "icons"
 NAV_DIR = ICON_ROOT / "nav"
@@ -197,8 +197,10 @@ def render_app(tokens: dict, app_id: str, theme_name: str) -> str:
     stroked, filled = _primitives(NAV_GLYPHS[spec["glyph"]])
     stroke_width = 1.75 / glyph_scale
     parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" '
-        f'width="{size}" height="{size}" role="img">',
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" '
+            f'width="{size}" height="{size}" role="img">'
+        ),
         f"<title>Zaod {app_id} application icon ({theme_name})</title>",
         f'<rect x="{inset}" y="{inset}" width="{size - inset * 2}" height="{size - inset * 2}" '
         f'rx="{radius}" fill="{theme[fill_role]}"'

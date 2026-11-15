@@ -23,7 +23,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-import zaod_tokens as tokens  # noqa: E402  (local, generated, bundled with every app)
+import zaod_tokens as tokens
 
 SCALE_RANGE = tokens.SCALE_RANGE
 
@@ -83,7 +83,6 @@ def stylesheet() -> str:
     pad_x = tokens.SPACING["3"]
     gap = tokens.SPACING["3"]
     target = tokens.FOCUS["minTargetSize"]
-    mono = tokens.FONT_FAMILIES["mono"]
     body = font_px("typeBody")
     caption = font_px("typeCaption")
     # The title role is 20 px; a window heading steps up one notch and never

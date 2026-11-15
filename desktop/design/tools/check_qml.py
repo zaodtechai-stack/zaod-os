@@ -36,13 +36,12 @@ SURFACE_DIRS = (
 
 
 def qml_files() -> list[Path]:
-    files = []
-    for directory in SURFACE_DIRS:
-        if not directory.is_dir():
-            continue
-        for path in sorted(directory.glob("*.qml")):
-            files.append(path)
-    return files
+    return [
+        path
+        for directory in SURFACE_DIRS
+        if directory.is_dir()
+        for path in sorted(directory.glob("*.qml"))
+    ]
 
 
 def main(argv=None) -> int:

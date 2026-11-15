@@ -21,7 +21,7 @@ DESIGN_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = DESIGN_ROOT.parents[1]
 sys.path.insert(0, str(DESIGN_ROOT / "tools"))
 
-from tokens_to_qml import COLOR_ROLES, TYPE_NAMES, load_tokens  # noqa: E402
+from tokens_to_qml import COLOR_ROLES, TYPE_NAMES, load_tokens
 
 OUTPUT_PATH = REPO_ROOT / "apps" / "lib" / "zaod_tokens.py"
 

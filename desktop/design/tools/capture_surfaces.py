@@ -78,7 +78,7 @@ if not image.save({str(out_path)!r}):
 print({name!r}, {theme!r}, image.width(), "x", image.height())
 """
     result = subprocess.run(
-        [sys.executable, "-c", script], env=env, capture_output=True, text=True
+        [sys.executable, "-c", script], env=env, capture_output=True, text=True, check=False
     )
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout).strip().splitlines()[-1])
@@ -94,6 +94,7 @@ def capture_app(app_id: str, theme: str, out_path: Path, lite: bool = False, sca
         [sys.executable, str(RENDER_APP), app_id, theme, str(out_path)],
         env=env,
         capture_output=True,
+        check=False,
         text=True,
     )
     if result.returncode != 0:

@@ -95,7 +95,7 @@ FOCUS_DECLARED = re.compile(r"activeFocusOnTab|Keys\.on|focus:\s*true")
 FOCUS_RING_DRAWN = re.compile(r"focusRingWidth")
 
 
-def check_focus_reachability(path: Path, text: str, drift: "Drift") -> None:
+def check_focus_reachability(path: Path, text: str, drift: Drift) -> None:
     """Every component with a pointer area must also declare keyboard focus."""
     relative = str(path.relative_to(REPO_ROOT))
     if POINTER_AREA.search(text) and not FOCUS_DECLARED.search(text):
