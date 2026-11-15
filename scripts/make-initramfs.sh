@@ -45,21 +45,28 @@ fail() { printf 'make-initramfs: %s\n' "$*" >&2; exit 1; }
 [[ -f boot/initramfs/zaod-live ]] || fail "boot/initramfs/zaod-live is missing"
 
 # Kernels differ in module directory layout and in whether .ko files are
-# compressed, so a module is looked up by name rather than by a hardcoded path.
-module_name() {
+# compressed, so a module is found by basename anywhere in the tree. Most
+# options map to their lowercased option name; the exceptions are the ones
+# whose module is not named after the option (Debian, Ubuntu and upstream all
+# agree on these names).
+module_basename() {
   case "$1" in
-    CONFIG_ISO9660_FS) printf '%s\n' 'isofs/fs/isofs' ;;
-    CONFIG_USB_STORAGE) printf '%s\n' 'usb-storage/drivers/usb/storage' ;;
-    *) return 1 ;;
+    CONFIG_ISO9660_FS) printf '%s\n' 'isofs' ;;
+    CONFIG_OVERLAY_FS) printf '%s\n' 'overlay' ;;
+    CONFIG_BLK_DEV_LOOP) printf '%s\n' 'loop' ;;
+    CONFIG_VFAT_FS) printf '%s\n' 'vfat' ;;
+    CONFIG_USB_STORAGE) printf '%s\n' 'usb-storage' ;;
+    CONFIG_USB_XHCI_HCD) printf '%s\n' 'xhci-hcd' ;;
+    CONFIG_SQUASHFS) printf '%s\n' 'squashfs' ;;
+    *) printf '%s\n' "${1#CONFIG_}" | tr '[:upper:]_' '[:lower:]-' ;;
   esac
 }
 
 module_lookup() {
-  # $1 directory hint, $2 module basename
+  # $1 module basename, with or without a compressed suffix on disk
   tar -tzf "$MODULES_ARCHIVE" \
-    | sed -n "s#^\./lib/modules/$KERNEL_VERSION/.*/$2\.ko\(\.\(zst\|xz\|gz\)\)\{0,1\}\$#&\n#p" \
-    | head -n 1 \
-    | sed "s#^\./lib/modules/$KERNEL_VERSION/##"
+    | sed -n "s#^\./lib/modules/$KERNEL_VERSION/\(.*/\)\{0,1\}$1\.ko\(\.\(zst\|xz\|gz\)\)\{0,1\}\$#\1$1.ko#p" \
+    | head -n 1
 }
 
 modular_count=0
@@ -67,10 +74,9 @@ for option in "${REQUIRED_CONFIG[@]}"; do
   setting="$(sed -n "s/^${option}=//p" "$KERNEL_CONFIG" | head -n 1)"
   [[ "$setting" == y || "$setting" == m ]] || fail "$option must be built-in or modular in $KERNEL_CONFIG"
   if [[ "$setting" == m ]]; then
-    mapping="$(module_name "$option" 2>/dev/null || true)"
-    [[ -n "$mapping" ]] || fail "no initramfs module mapping for $option"
-    relative="$(module_lookup "${mapping%%/*}" "${mapping##*/}")"
-    [[ -n "$relative" ]] || fail "module ${mapping##*/} for $option is missing from $MODULES_ARCHIVE"
+    basename="$(module_basename "$option")"
+    relative="$(module_lookup "$basename")"
+    [[ -n "$relative" ]] || fail "module $basename for $option is missing from $MODULES_ARCHIVE"
     modular_count=$((modular_count + 1))
   fi
 done
