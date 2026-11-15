@@ -89,7 +89,8 @@ sandbox-proof:
 hello:
 	@bash apps/hello-gui/build.sh $(if $(ZAOD_KEY),$(ZAOD_KEY),)
 
-store-index:
+# The index covers every shipped package, so the packages must exist first.
+store-index: apps firefox
 	@$(if $(ZAOD_KEY),bash repo/build-store.sh $(ZAOD_KEY),@echo "set ZAOD_KEY=path/to/store.key to publish a signed index")
 
 test: zaod-test apps-test studio-test

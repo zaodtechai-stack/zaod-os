@@ -40,6 +40,21 @@ else
   # No usable Docker: fall back to the Debian bootstrap tools from
   # scripts/setup-tools.sh, which the PRD names as the base-image method.
   include=$(echo "$PACKAGES" | tr '\n' ',' | sed 's/,$//')
+  # debootstrap and mmdebstrap need privileged mounts inside the target, so fail
+  # early with a readable reason instead of leaving a half-built directory.
+  if [[ $(id -u) -ne 0 ]]; then
+    printf 'Rootfs bootstrap needs root (or Docker); re-run with sudo.\n' >&2
+    exit 1
+  fi
+  probe=$(mktemp -d)
+  if ! mount -t tmpfs tmpfs "$probe" >/dev/null 2>&1; then
+    rmdir "$probe" 2>/dev/null || true
+    printf 'This host denies privileged mounts, so chroot/proc inside the target image cannot be mounted.\n' >&2
+    printf 'Build the rootfs on a host or CI runner with mount privileges, or install Docker.\n' >&2
+    exit 1
+  fi
+  umount "$probe" >/dev/null 2>&1 || true
+  rmdir "$probe" 2>/dev/null || true
   if command -v mmdebstrap >/dev/null 2>&1; then
     printf 'Docker unavailable: building the %s rootfs with mmdebstrap.\n' "$SUITE"
     "${RM[@]}" mmdebstrap --variant=apt --include="$include" "$SUITE" "$ROOTFS_DIR" "$MIRROR"
