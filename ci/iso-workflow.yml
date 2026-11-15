@@ -1,0 +1,91 @@
+name: iso
+
+# Builds the installable/live ISO on a host that allows privileged mounts, which
+# a nested sandbox does not. Every input is the same tree a developer builds from:
+# rootfs/packages.list, the Phase 6 desktop layer, apps/ and boot/.
+#
+# The kernel comes from linux-image-amd64 when no Phase 2 kernel artifact exists,
+# so a release image never waits on a from-source kernel build.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "rootfs/**"
+      - "boot/**"
+      - "apps/**"
+      - "desktop/**"
+      - "Makefile"
+      - ".github/workflows/iso.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/az
+          sudo apt-get clean
+          df -h /
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            debootstrap mmdebstrap squashfs-tools xorriso mtools \
+            grub-pc-bin grub-efi-amd64-bin busybox-static zstd cpio \
+            dosfstools rsync python3
+          for tool in mksquashfs xorriso grub-mkimage mformat busybox cpio zstd; do
+            printf '%-14s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
+          done
+
+      - name: Build root filesystem
+        run: sudo -E bash scripts/build-rootfs.sh
+
+      - name: Build initramfs
+        run: sudo -E bash scripts/make-initramfs.sh
+
+      - name: Assemble ISO
+        run: sudo -E bash scripts/make-iso.sh
+
+      - name: Checksums and size
+        run: |
+          cd build/out
+          sha256sum ./*.iso > SHA256SUMS
+          cat SHA256SUMS
+          du -h ./*.iso
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zaod-os-iso
+          path: |
+            build/out/*.iso
+            build/out/SHA256SUMS
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: iso-${{ github.run_number }}
+          name: Zaod OS ISO (build ${{ github.run_number }})
+          body: |
+            Live/installable hybrid ISO built from `${{ github.sha }}`.
+
+            Kernel: packaged `linux-image-amd64` (no Phase 2 from-source artifact present).
+            Desktop: Plasma 6 with the Zaod Fluent design layer from Phase 6.
+            Verify with `sha256sum -c SHA256SUMS` before writing to USB.
+          files: |
+            build/out/*.iso
+            build/out/SHA256SUMS
+          fail_on_unmatched_files: true
