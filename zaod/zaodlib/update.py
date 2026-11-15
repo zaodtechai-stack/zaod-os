@@ -193,6 +193,9 @@ def _repack_installed(paths, app_id: str, version: str, target: Path) -> None:
     try:
         copy = staging / "app"
         shutil.copytree(source, copy, symlinks=False)
+        # The installed tree is read-only; the snapshot has to be rewritten before
+        # it can be repacked, which fails with EACCES for a normal user otherwise.
+        util.make_writable(copy)
         pack.build_package(copy, target, level=6)
     finally:
         shutil.rmtree(staging, ignore_errors=True)

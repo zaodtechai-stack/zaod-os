@@ -74,7 +74,7 @@ def check_package_list(report: Report) -> None:
         "xdg-desktop-portal-kde": "portal",
         "polkitd": "authorisation",
         "bubblewrap": "sandbox",
-        "zram-generator": "memory",
+        "zram-tools": "memory",
         "earlyoom": "memory pressure",
         "python3": "runtime",
         "fonts-inter": "font",
@@ -164,10 +164,10 @@ def check_shipped_files(report: Report) -> None:
     live_journal = read(FILES / "etc/systemd/journald.conf.d/zaod-live.conf")
     report.contains(live_journal, "Storage=volatile", "live sessions keep the journal in RAM")
 
-    zram = read(FILES / "etc/systemd/zram-generator.conf.d/zaod.conf")
-    report.contains(zram, "[zram0]", "a zram device is configured")
-    report.contains(zram, "compression-algorithm = zstd", "zram uses zstd")
-    report.contains(zram, "zram-size", "zram is sized from RAM")
+    zram = read(FILES / "etc/default/zramswap")
+    report.contains(zram, "ALGO=zstd", "zram uses zstd")
+    report.contains(zram, "PERCENT=", "zram is sized from RAM")
+    report.contains(zram, "PRIORITY=", "zram swap is preferred over disk")
 
     sysctl = read(FILES / "etc/sysctl.d/90-zaod-memory.conf")
     report.contains(sysctl, "vm.swappiness", "swappiness is set")

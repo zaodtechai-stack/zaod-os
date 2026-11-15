@@ -76,14 +76,13 @@ xserver-xorg-core
 ## desktop
 plasma-desktop
 plasma-workspace
-plasma-workspace-wayland
 plasma-nm
 plasma-pa
 sddm
 kwin-wayland
 kwin-x11
 kscreen
-kscreenlocker
+libkscreenlocker6
 kde-cli-tools
 kio
 kio-extras
@@ -112,14 +111,14 @@ fonts-noto-mono
 fonts-jetbrains-mono
 
 ## memory and pressure handling
-zram-generator
+zram-tools
 earlyoom
 systemd-oomd
 
 ## runtime for the Zaod tooling
 python3
 python3-pyqt6
-python3-pyqt6-svg
+python3-pyqt6.qtsvg
 python3-dbus
 python3-gi
 python3-pip

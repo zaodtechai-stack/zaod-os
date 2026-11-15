@@ -89,7 +89,7 @@ mapfile -t removals < <(grep -vE '^[[:space:]]*(#|$)' "$REMOVE_LIST")
 (( ${#removals[@]} > 0 )) || fail "the removal list is empty"
 
 for required in systemd dbus network-manager pipewire wireplumber mesa-vulkan-drivers \
-                plasma-desktop sddm polkitd bubblewrap zram-generator earlyoom python3; do
+                plasma-desktop sddm polkitd bubblewrap zram-tools earlyoom python3; do
   printf '%s\n' "${packages[@]}" | grep -qx "$required" \
     || fail "the package list is missing $required"
 done

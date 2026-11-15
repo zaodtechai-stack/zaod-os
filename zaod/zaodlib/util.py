@@ -8,7 +8,6 @@ import os
 import re
 import shutil
 import stat
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -79,25 +78,48 @@ def human_bytes(size: int) -> str:
 
 
 def remove_tree(path: Path) -> None:
-    """Remove a file, symlink or directory tree, tolerating missing paths."""
+    """Remove a file, symlink or directory tree, tolerating missing paths.
+
+    Installed applications live in a read-only store, so write permission has to
+    be restored on the way down: a plain rmtree fails with EACCES for a normal
+    user, and a per-path retry leaves directories behind because a parent gets
+    visited again after a child has failed.
+    """
     if path.is_symlink() or (path.exists() and not path.is_dir()):
         path.unlink(missing_ok=True)
         return
     if not path.is_dir():
         return
 
-    def restore_write(function, target, _error) -> None:
-        # Installed applications live in a read-only store, so removal has to
-        # make each directory writable on the way down instead of failing with
-        # EACCES for an unprivileged user.
-        mode = stat.S_IMODE(os.lstat(target).st_mode)
-        os.chmod(target, mode | 0o200)
-        function(target)
+    for current, directories, files in os.walk(path):
+        for name in files + directories:
+            target = Path(current) / name
+            if target.is_symlink():
+                continue
+            try:
+                os.chmod(target, stat.S_IMODE(os.lstat(target).st_mode) | 0o700)
+            except FileNotFoundError:  # pragma: no cover - racing removal
+                continue
+    os.chmod(path, stat.S_IMODE(os.stat(path).st_mode) | 0o700)
+    shutil.rmtree(path)
 
-    if sys.version_info >= (3, 12):
-        shutil.rmtree(path, onexc=restore_write)
-    else:  # pragma: no cover - the shipped image is Python 3.13
-        shutil.rmtree(path, onerror=lambda func, target, _info: restore_write(func, target, None))
+
+def make_writable(root: Path) -> None:
+    """Restore owner write permission below ``root``, the inverse of make_read_only."""
+    for current, dirs, files in os.walk(root):
+        for name in files:
+            target = Path(current) / name
+            if target.is_symlink():
+                continue
+            mode = stat.S_IMODE(target.stat().st_mode)
+            os.chmod(target, mode | 0o200)
+        for name in dirs:
+            target = Path(current) / name
+            if target.is_symlink():
+                continue
+            mode = stat.S_IMODE(target.stat().st_mode)
+            os.chmod(target, mode | 0o300)
+    os.chmod(root, stat.S_IMODE(root.stat().st_mode) | 0o300)
 
 
 def make_read_only(root: Path) -> None:

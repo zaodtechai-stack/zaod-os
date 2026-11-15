@@ -1,0 +1,9 @@
+# Compressed swap in RAM, sized as a share of installed memory, so machines with
+# little RAM stay responsive instead of thrashing on disk.
+#
+# Debian trixie no longer packages zram-generator, so this is the zram-tools
+# configuration format: PERCENT sizes the device from RAM and PRIORITY makes the
+# kernel prefer it over any disk swap.
+ALGO=zstd
+PERCENT=50
+PRIORITY=100
