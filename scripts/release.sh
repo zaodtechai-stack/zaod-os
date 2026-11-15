@@ -29,8 +29,10 @@ if [ -z "$version" ]; then
 fi
 
 out="$root/build/release/$version"
-mkdir -p "$out/store"
+mkdir -p "$out"
 find "$out" -mindepth 1 -delete
+# -delete removes the store directory too, so recreate it afterwards.
+mkdir -p "$out/store"
 
 if [ "$store_only" = false ]; then
   iso="$root/build/out/zaod-os-$version-amd64.iso"
@@ -50,10 +52,29 @@ if [ ${#packages[@]} -eq 0 ]; then
   exit 2
 fi
 cp "${packages[@]}" "$out/store/"
-for extra in index.json index.sig keys/store.pub; do
-  if [ -f "$root/repo/build/$extra" ]; then
+# Re-sign the index with the release key, so the index, its signature and the
+# shipped public key all belong together.
+if [ -n "$key" ]; then
+  "$root/zaod/bin/zaod" repo build "$root/build/out/store" --name "${REPO_NAME:-official}" --key "$key" >/dev/null
+fi
+for extra in index.json index.json.sig; do
+  if [ -f "$root/build/out/store/$extra" ]; then
+    cp "$root/build/out/store/$extra" "$out/store/"
+  elif [ -f "$root/repo/build/$extra" ]; then
     cp "$root/repo/build/$extra" "$out/store/"
+  else
+    echo "error: $extra is missing; run 'make store-index ZAOD_KEY=...' first" >&2
+    exit 2
   fi
+done
+mkdir -p "$out/store/keys"
+if [ -n "$key" ] && [ -f "${key%.key}.pub" ]; then
+  cp "${key%.key}.pub" "$out/store/keys/store.pub"
+fi
+# Packages are signed by whoever built them, so ship those public keys as well;
+# the signed index still pins every package hash.
+for pub in "$root"/build/out/apps/*.pub; do
+  [ -f "$pub" ] && cp "$pub" "$out/store/keys/$(basename "$pub")"
 done
 
 python3 - "$root" "$out" "$version" "$key" <<'PY'

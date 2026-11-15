@@ -150,3 +150,18 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
   It now prints one `zaod-studio: error: ...` line and returns the error's exit code.
 - Still open here: `zaod run` cannot execute (bwrap cannot create a network namespace
   in this sandbox), so window launch stays a real-image check.
+
+### 2026-11-15: Phase 10 store release made usable (three release.sh bugs)
+
+- `make store-release VERSION=x ZAOD_KEY=...` never worked: `find -delete` removed the
+  freshly created `store/` directory, so every copy failed. Fixed by recreating it.
+- The signed index was never shipped: the loop copied `index.sig` and
+  `repo/build/keys/store.pub`, neither of which exists, so a release shipped packages
+  with no index. It now re-signs the index with the release key, copies
+  `index.json` + `index.json.sig` (failing loudly if absent) and ships every
+  package-signing public key under `store/keys/`.
+- Verified end to end on a fresh root: trust `store/keys/*.pub`, `repo add official`,
+  `repo sync` -> 14 packages, `install org.zaod.calculator` -> `source: repo:official`.
+  Release output: 20 artifacts.
+- Still blocked for Phase 10: the ISO side (`make release` without `--store-only`),
+  OOBE and the installer need the Phase 3/4 image.
