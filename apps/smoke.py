@@ -21,7 +21,7 @@ if (REPO / "zaod" / "zaodlib").is_dir():
     os.environ.setdefault("ZAOD_LIB", str(REPO / "zaod"))
     os.environ.setdefault("ZAOD_ROOT", str(REPO / "build" / "smoke-root"))
 
-from PySide6.QtWidgets import QApplication  # noqa: E402 - environment set above
+from PySide6.QtWidgets import QApplication
 
 
 def load_module(path: pathlib.Path, name: str):

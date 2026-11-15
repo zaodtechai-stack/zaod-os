@@ -282,7 +282,7 @@ class ControlCenter:
         if control.parser == "volume":
             for token in raw.split():
                 try:
-                    return str(int(round(float(token) * 100)))
+                    return str(round(float(token) * 100))
                 except ValueError:
                     continue
             raise SettingError(f"cannot read the volume from {raw!r}")

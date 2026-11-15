@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "id": "org.zaod.studio",
+  "name": "Studio",
+  "version": "0.9.0",
+  "kind": "app",
+  "arch": "x86_64",
+  "min_os": "0.9.0",
+  "summary": "Create, build and sign .zaod applications",
+  "description": "Studio scaffolds projects from five templates, edits them with syntax highlighting, builds and signs .zaod packages and verifies the result. Optional install: the desktop works without it.",
+  "categories": [
+    "Development"
+  ],
+  "license": {
+    "spdx": "MIT",
+    "name": "MIT License"
+  },
+  "author": {
+    "name": "Zaod OS"
+  },
+  "entry": {
+    "exec": "payload/main.py",
+    "args": [],
+    "terminal": false
+  },
+  "icon": "icon.svg",
+  "permissions": {
+    "network": false,
+    "filesystem": [
+      "home",
+      "documents"
+    ],
+    "devices": [
+      "dri"
+    ]
+  },
+  "runtimes": [
+    "org.zaod.runtime.pyside6"
+  ],
+  "built_at": "2026-11-15T00:00:00Z",
+  "build": {
+    "recipe": "apps/studio/build.py",
+    "reproducible": true
+  }
+}

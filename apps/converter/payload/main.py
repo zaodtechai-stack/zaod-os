@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-import zaodapp  # noqa: E402
+import zaodapp
 
 LENGTH = {"Metre": 1.0, "Kilometre": 1000.0, "Centimetre": 0.01, "Inch": 0.0254, "Foot": 0.3048, "Mile": 1609.344}
 MASS = {"Kilogram": 1.0, "Gram": 0.001, "Pound": 0.45359237, "Ounce": 0.028349523125}
@@ -25,7 +25,13 @@ def convert(category: str, value: float, source: str, target: str) -> float:
 
 
 def build_window():
-    from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QLabel, QPushButton, QVBoxLayout
+    from PySide6.QtWidgets import (
+        QComboBox,
+        QDoubleSpinBox,
+        QLabel,
+        QPushButton,
+        QVBoxLayout,
+    )
 
     window = zaodapp.base_window("Converter", 460, 420)
     category_box = QComboBox()

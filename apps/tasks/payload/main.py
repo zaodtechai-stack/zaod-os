@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-import zaodapp  # noqa: E402
+import zaodapp
 
 APP_ID = "org.zaod.tasks"
 
@@ -34,7 +34,14 @@ def save_tasks(tasks) -> None:
 
 def build_window():
     from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton
+    from PySide6.QtWidgets import (
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QListWidget,
+        QListWidgetItem,
+        QPushButton,
+    )
 
     window = zaodapp.base_window("Tasks", 520, 460)
     entry = QLineEdit()

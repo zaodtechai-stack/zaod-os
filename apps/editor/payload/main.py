@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-import zaodapp  # noqa: E402
+import zaodapp
 
 
 def word_count(text: str) -> int:
@@ -17,7 +17,13 @@ def word_count(text: str) -> int:
 
 def build_window():
     from PySide6.QtGui import QFont
-    from PySide6.QtWidgets import QFileDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton
+    from PySide6.QtWidgets import (
+        QFileDialog,
+        QHBoxLayout,
+        QLabel,
+        QPlainTextEdit,
+        QPushButton,
+    )
 
     window = zaodapp.base_window("Text Editor", 760, 560)
     editor = QPlainTextEdit()
@@ -40,7 +46,8 @@ def build_window():
         if not path:
             return
         try:
-            editor.setPlainText(open(path, encoding="utf-8", errors="replace").read())
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                editor.setPlainText(handle.read())
         except OSError:
             status.setText("cannot read that file")
             return

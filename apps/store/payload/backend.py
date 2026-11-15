@@ -7,7 +7,6 @@ Store itself never runs as root. Browsing works offline from the cached index.
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -26,7 +25,7 @@ def _load_zaodlib():
             break
     else:
         raise StoreError("zaodlib is not installed; the store needs a Zaod system")
-    from zaodlib import db, keys, paths, repo  # noqa: PLC0415 - path set above
+    from zaodlib import db, keys, paths, repo
 
     return db, keys, paths, repo
 
@@ -103,9 +102,11 @@ class StoreBackend:
         indexes = {}
         for entry in self.repositories():
             try:
-                indexes[entry.name] = self.repo_module.cached_index(self.paths, entry.name)
-            except Exception:  # noqa: BLE001 - a missing cache just means offline
-                continue
+                index = self.repo_module.cached_index(self.paths, entry.name)
+            except Exception:  # noqa: BLE001 - any unreadable cache simply means offline
+                index = None
+            if index is not None:
+                indexes[entry.name] = index
         return indexes
 
     def offline(self) -> bool:

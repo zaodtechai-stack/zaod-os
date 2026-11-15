@@ -9,7 +9,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-import zaodapp  # noqa: E402
+import zaodapp
 
 
 def format_elapsed(seconds: float) -> str:

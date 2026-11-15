@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop apps firefox iso test zaod-test apps-test zaod-lint sandbox-proof smoke hello store-index clean
+.PHONY: help doctor fetch firmware kernel rootfs desktop apps firefox studio iso test zaod-test apps-test studio-test zaod-lint sandbox-proof smoke hello store-index clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -15,9 +15,11 @@ help:
 	  '  iso          - build the bootable ISO (not implemented yet)' \
 	  '  hello        - build the reference .zaod app package' \
 	  '  store-index  - build every package and sign the store index' \
+	  '  studio       - package Zaod Studio (optional app)' \
 	  '  smoke        - start every app window offscreen and screenshot it' \
 	  '  test         - run every test suite' \
 	  '  apps-test    - run the application test suite' \
+	  '  studio-test  - run the Studio, template and project tests' \
 	  '  zaod-test    - run the package manager unit tests' \
 	  '  zaod-lint    - Ruff + ShellCheck over the repository' \
 	  '  sandbox-proof- prove the bubblewrap isolation rules' \
@@ -54,6 +56,12 @@ firefox:
 apps-test:
 	@python3 -m unittest discover -s apps/tests -v
 
+studio:
+	@python3 apps/studio/build.py $(if $(ZAOD_KEY),--key $(ZAOD_KEY),)
+
+studio-test:
+	@python3 -m unittest discover -s studio/tests -v
+
 smoke:
 	@python3 apps/smoke.py
 
@@ -62,7 +70,7 @@ zaod-test:
 
 zaod-lint:
 	@ruff check .
-	@shellcheck scripts/*.sh tests/*.sh apps/*/build.sh
+	@shellcheck scripts/*.sh tests/*.sh apps/*/build.sh apps/*/*.sh
 
 sandbox-proof:
 	@bash tests/sandbox-proof.sh
@@ -73,7 +81,7 @@ hello:
 store-index:
 	@$(if $(ZAOD_KEY),bash repo/build-store.sh $(ZAOD_KEY),@echo "set ZAOD_KEY=path/to/store.key to publish a signed index")
 
-test: zaod-test apps-test
+test: zaod-test apps-test studio-test
 
 clean:
 	@rm -rf build

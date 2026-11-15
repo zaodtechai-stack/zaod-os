@@ -10,8 +10,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
 
-import zaodapp  # noqa: E402
-from backend import StoreBackend, StoreError  # noqa: E402
+import zaodapp
+from backend import StoreBackend, StoreError
 
 
 def build_window(store: StoreBackend | None = None):

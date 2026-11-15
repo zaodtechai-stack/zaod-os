@@ -12,6 +12,7 @@ report under `docs/reports/`.
 | 2 | Kernel 6.18 LTS with the Zaod config | done, `docs/reports/phase-2.md` |
 | 7 | `.zaod` format and package manager | done, `docs/reports/phase-7.md` |
 | 8 | Applications, Store and Control Center | done, `docs/reports/phase-8.md` |
+| 9 | Studio, templates and project builds | done, `docs/reports/phase-9.md` |
 
 ## Repository layout
 
@@ -41,6 +42,18 @@ Python standard library plus PySide6. Firefox is repackaged from the official Mo
 a pinned SHA-256; the builder proves that the only added file is `distribution/policies.json`.
 
 `repo/build-store.sh store.key` publishes a signed store index over every built package.
+
+## Studio (optional)
+
+`make studio` packages Zaod Studio, the editor for building `.zaod` apps from five templates
+(Python+Qt, Python CLI, C/CMake, shell, web wrapper). It writes `build/out/optional/`, so the
+regular store index never ships it. The developer guide is `docs/dev/studio.md`.
+
+```bash
+PYTHONPATH=studio python3 -m zaodstudio.cli templates
+PYTHONPATH=studio python3 -m zaodstudio.cli new python-cli ~/src/demo --id org.example.demo
+PYTHONPATH=studio python3 -m zaodstudio.cli build ~/src/demo --sign --out build/demo.zaod
+```
 
 ## Package manager
 

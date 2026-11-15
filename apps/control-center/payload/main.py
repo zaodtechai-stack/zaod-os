@@ -10,8 +10,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
 
-import zaodapp  # noqa: E402
-from backend import ControlCenter, SettingError  # noqa: E402
+import zaodapp
+from backend import ControlCenter, SettingError
 
 
 def build_window(center: ControlCenter | None = None):
@@ -98,7 +98,7 @@ def build_window(center: ControlCenter | None = None):
                     else:
                         widget.setChecked(str(value).lower() in ("true", "on", "1", "yes"))
 
-                def store(value, page_key=page.key, control_key=control.key, kind=control.kind) -> None:
+                def store(value, page_key=page.key, control_key=control.key, kind=control.kind, label=control.label) -> None:
                     if kind == "toggle":
                         on_value, off_value = "true", "false"
                         for raw, translated in settings.control(page_key, control_key).value_map.items():
@@ -114,7 +114,7 @@ def build_window(center: ControlCenter | None = None):
                     except SettingError as error:
                         report(str(error), error=True)
                         return
-                    report(f"{control.label} updated")
+                    report(f"{label} updated")
 
                 if control.kind == "choice":
                     widget.currentIndexChanged.connect(
@@ -142,13 +142,13 @@ def build_window(center: ControlCenter | None = None):
                     except (SettingError, ValueError) as error:
                         report(str(error), error=True)
 
-                def apply_slider(value, page_key=page.key, control_key=control.key) -> None:
+                def apply_slider(value, page_key=page.key, control_key=control.key, label=control.label) -> None:
                     try:
                         settings.set(page_key, control_key, str(value))
                     except SettingError as error:
                         report(str(error), error=True)
                         return
-                    report(f"{control.label} set to {value}%")
+                    report(f"{label} set to {value}%")
 
                 slider.sliderReleased.connect(lambda slider=slider: apply_slider(slider.value()))
                 load_slider()

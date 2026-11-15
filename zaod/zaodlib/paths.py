@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 
@@ -91,14 +92,19 @@ class Paths:
         return self.applications_dir / f"{app_id}.desktop"
 
     def os_version(self) -> str:
-        """Version of the running Zaod OS, used for ``min_os`` checks."""
+        """Version of the running Zaod OS, used for ``min_os`` checks.
+
+        Some hosts (a plain Debian container, for example) report a VERSION_ID that
+        is not semver. Those values are ignored rather than crashing a comparison.
+        """
         from . import DEFAULT_OS_VERSION
 
+        semver = re.compile(r"^\d+\.\d+\.\d+$")
         release = self.os_release
         if release.is_file():
             for line in release.read_text(encoding="utf-8", errors="replace").splitlines():
                 if line.startswith("VERSION_ID="):
                     value = line.split("=", 1)[1].strip().strip('"')
-                    if value:
+                    if value and semver.match(value):
                         return value
         return DEFAULT_OS_VERSION

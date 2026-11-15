@@ -14,7 +14,8 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 os.environ.setdefault("ZAOD_LIB", str(REPO_ROOT / "zaod"))
 sys.path.insert(0, str(REPO_ROOT / "zaod"))
 
-from zaodlib import keys, pack, paths as zaod_paths, repo  # noqa: E402
+from zaodlib import keys, pack, repo
+from zaodlib import paths as zaod_paths
 
 
 def load_backend():
