@@ -269,7 +269,13 @@ if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent passwd zaodlive >/dev/null 2>&
   as_root chroot "$ROOTFS_DIR" /usr/sbin/useradd --create-home --shell /bin/bash \
     --groups wheel,audio,video,render,input,netdev zaodlive
 fi
-as_root chroot "$ROOTFS_DIR" /usr/sbin/passwd --lock zaodlive >/dev/null
+# Debian ships passwd as /usr/bin/passwd in a merged-usr image, so resolve it
+# instead of assuming the split-usr path.
+# shellcheck disable=SC2016  # the expansion belongs to the chroot
+as_root chroot "$ROOTFS_DIR" /bin/sh -c '
+  binary="$(command -v passwd)" || { echo "passwd is missing from the image" >&2; exit 1; }
+  "$binary" --lock zaodlive
+' >/dev/null
 
 # ---------------------------------------------------------------- 4. SBOM
 say "exporting the SBOM and licence texts"
