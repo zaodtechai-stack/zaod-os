@@ -15,7 +15,11 @@ import sys
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 ROOT = pathlib.Path(__file__).resolve().parent
+REPO = ROOT.parent
 sys.path.insert(0, str(ROOT / "lib"))
+if (REPO / "zaod" / "zaodlib").is_dir():
+    os.environ.setdefault("ZAOD_LIB", str(REPO / "zaod"))
+    os.environ.setdefault("ZAOD_ROOT", str(REPO / "build" / "smoke-root"))
 
 from PySide6.QtWidgets import QApplication  # noqa: E402 - environment set above
 
@@ -41,6 +45,11 @@ def main() -> int:
         if not entry.is_file():
             continue
         try:
+            # Each app ships its own backend.py; clear the module cache so apps
+            # cannot pick up a sibling app's module inside this single process.
+            for shared in ("backend", "main"):
+                sys.modules.pop(shared, None)
+            sys.path.insert(0, str(directory / "payload"))
             module = load_module(entry, f"zaod_app_{directory.name.replace('-', '_')}")
             window = module.build_window()
             window.show()

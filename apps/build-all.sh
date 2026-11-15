@@ -23,6 +23,8 @@ mkdir -p "$out" "$stage_root"
 
 for directory in "$here"/*/; do
   [ -f "$directory/MANIFEST.json" ] || continue
+  # Apps with their own builder (e.g. Firefox) are packaged by that builder.
+  [ -d "$directory/payload" ] || continue
   slug=$(basename "$directory")
   stage="$stage_root/$slug"
   mkdir -p "$stage/payload/lib"
@@ -30,6 +32,7 @@ for directory in "$here"/*/; do
   cp "$directory/icon.svg" "$stage/icon.svg"
   cp -r "$directory/payload/." "$stage/payload/"
   cp "$here/lib/zaodapp.py" "$stage/payload/lib/zaodapp.py"
+  [ -f "$stage/payload/main.py" ] && chmod +x "$stage/payload/main.py"
   version=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$stage/MANIFEST.json")
   target="$out/$slug-$version.zaod"
   if [ -n "$key" ]; then

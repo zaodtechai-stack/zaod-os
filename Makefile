@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor fetch firmware kernel rootfs desktop apps iso test zaod-test zaod-lint shell-lint sandbox-proof hello store-index clean
+.PHONY: help doctor fetch firmware kernel rootfs desktop apps firefox iso test zaod-test apps-test zaod-lint sandbox-proof smoke hello store-index clean
 
 help:
 	@printf '%s\n' 'Zaod OS build targets:' \
@@ -10,11 +10,14 @@ help:
 	  '  kernel       - build the Zaod kernel and firmware bundle' \
 	  '  rootfs       - build the minimal Debian trixie tarball evidence artifact' \
 	  '  desktop      - assemble desktop components (not implemented yet)' \
-	  '  apps         - build Zaod applications (not implemented yet)' \
+	  '  apps         - build and sign every Zaod application package' \
+	  '  firefox      - repackage Firefox ESR with the Google search policy' \
 	  '  iso          - build the bootable ISO (not implemented yet)' \
 	  '  hello        - build the reference .zaod app package' \
-	  '  store-index  - build and sign the local store index' \
-	  '  test         - run the full test suite' \
+	  '  store-index  - build every package and sign the store index' \
+	  '  smoke        - start every app window offscreen and screenshot it' \
+	  '  test         - run every test suite' \
+	  '  apps-test    - run the application test suite' \
 	  '  zaod-test    - run the package manager unit tests' \
 	  '  zaod-lint    - Ruff + ShellCheck over the repository' \
 	  '  sandbox-proof- prove the bubblewrap isolation rules' \
@@ -38,9 +41,21 @@ firmware:
 kernel: firmware
 	@bash kernel/build.sh
 
-desktop apps iso:
+desktop iso:
 	@printf 'Target "%s" is not implemented yet.\n' "$@" >&2
 	@exit 2
+
+apps:
+	@bash apps/build-all.sh $(if $(ZAOD_KEY),$(ZAOD_KEY),)
+
+firefox:
+	@python3 apps/firefox/build.py $(if $(ZAOD_KEY),--key $(ZAOD_KEY),)
+
+apps-test:
+	@python3 -m unittest discover -s apps/tests -v
+
+smoke:
+	@python3 apps/smoke.py
 
 zaod-test:
 	@python3 -m unittest discover -s zaod/tests -v
@@ -56,11 +71,9 @@ hello:
 	@bash apps/hello-gui/build.sh $(if $(ZAOD_KEY),$(ZAOD_KEY),)
 
 store-index:
-	@mkdir -p build/out/store
-	@cp build/out/apps/*.zaod build/out/store/ 2>/dev/null || true
-	@$(if $(ZAOD_KEY),./zaod/bin/zaod repo build build/out/store --name core --key $(ZAOD_KEY),@echo "set ZAOD_KEY=path/to/store.key to sign the index")
+	@$(if $(ZAOD_KEY),bash repo/build-store.sh $(ZAOD_KEY),@echo "set ZAOD_KEY=path/to/store.key to publish a signed index")
 
-test: zaod-test
+test: zaod-test apps-test
 
 clean:
 	@rm -rf build

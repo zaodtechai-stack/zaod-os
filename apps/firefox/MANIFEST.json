@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "id": "org.mozilla.firefox",
+  "name": "Firefox",
+  "version": "153.7.0",
+  "kind": "app",
+  "arch": "x86_64",
+  "min_os": "0.7.0",
+  "summary": "Firefox ESR with Google as the default search engine",
+  "description": "Mozilla Firefox Extended Support Release, repackaged from the official Mozilla tarball without changing any binary. The only addition is a distribution policy that makes Google the default search engine.",
+  "categories": ["Network", "WebBrowser"],
+  "license": {"spdx": "MPL-2.0", "name": "Mozilla Public License 2.0", "url": "https://www.mozilla.org/MPL/2.0/"},
+  "author": {"name": "Mozilla Foundation", "contact": "https://www.mozilla.org"},
+  "entry": {"exec": "payload/firefox/firefox", "args": [], "terminal": false},
+  "icon": "icon.svg",
+  "permissions": {
+    "network": true,
+    "filesystem": ["home", "downloads", "pictures"],
+    "devices": ["dri", "audio"]
+  },
+  "associations": ["text/html", "x-scheme-handler/http", "x-scheme-handler/https"],
+  "built_at": "2026-11-15T00:00:00Z",
+  "build": {"recipe": "apps/firefox/build.py", "reproducible": true, "upstream": "https://ftp.mozilla.org/pub/firefox/releases/153.7.0esr/"}
+}

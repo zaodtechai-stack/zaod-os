@@ -1,0 +1,11 @@
+{
+  "product": "firefox-esr",
+  "version": "153.7.0esr",
+  "channel": "esr",
+  "locale": "en-US",
+  "platform": "linux-x86_64",
+  "tarball": "firefox-153.7.0esr.tar.xz",
+  "sha256": "7d2eb92ca3a7b2a83de092eb9b94c853980214de2fbfdccb2ac39d61c593c5a5",
+  "base_url": "https://ftp.mozilla.org/pub/firefox/releases/153.7.0esr",
+  "pinned_on": "2026-11-15"
+}

@@ -11,6 +11,7 @@ report under `docs/reports/`.
 | 1 | Foundation, toolchain, feasibility | done, `docs/reports/phase-1.md` |
 | 2 | Kernel 6.18 LTS with the Zaod config | done, `docs/reports/phase-2.md` |
 | 7 | `.zaod` format and package manager | done, `docs/reports/phase-7.md` |
+| 8 | Applications, Store and Control Center | done, `docs/reports/phase-8.md` |
 
 ## Repository layout
 
@@ -23,6 +24,23 @@ repo/       store hosting output
 tests/      repository-wide test and proof scripts
 docs/       reports, ADRs, versions
 ```
+
+## Applications
+
+Eleven first-party apps plus Firefox ESR build as signed `.zaod` packages:
+
+```bash
+make apps ZAOD_KEY=store.key     # build and sign every app
+make firefox ZAOD_KEY=store.key  # repackage Firefox ESR with the Google policy
+make smoke                       # start every window offscreen, save screenshots
+make apps-test                   # 43 application tests
+```
+
+Apps live under `apps/`, share the Fluent helpers in `apps/lib/zaodapp.py`, and use only the
+Python standard library plus PySide6. Firefox is repackaged from the official Mozilla tarball with
+a pinned SHA-256; the builder proves that the only added file is `distribution/policies.json`.
+
+`repo/build-store.sh store.key` publishes a signed store index over every built package.
 
 ## Package manager
 
