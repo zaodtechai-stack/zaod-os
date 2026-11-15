@@ -69,6 +69,13 @@ jobs:
       - name: Assemble ISO
         run: sudo -E bash scripts/make-iso.sh
 
+      - name: Hand the build output back to the runner
+        # Every build step runs through sudo, so build/out and the image inside
+        # it belong to root. The checksum step then could not create SHA256SUMS
+        # beside the image ("SHA256SUMS: Permission denied") after the ISO had
+        # already been written successfully.
+        run: sudo chown -R "$(id -u):$(id -g)" build/out
+
       - name: Checksums and size
         run: |
           cd build/out
