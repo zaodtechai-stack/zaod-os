@@ -12,22 +12,24 @@ Work on `main` only, and never revert or rewrite another agent's phase.
 | --- | --- | --- | --- |
 | 1 | Foundation, toolchain, feasibility | done | `make doctor`, `make fetch`, Ruff + ShellCheck |
 | 2 | Kernel 6.18.63 with the Zaod config | partial | `python3 tests/check_kernel_config.py kernel/zaod_defconfig` (95 options) |
-| 3 | Rootfs without distro package management | not implemented | no `rootfs/` package list, no apt/dpkg removal step |
+| 3 | Rootfs without distro package management | script ready, artifact missing | `scripts/build-rootfs.sh` records `build/out/rootfs-packages.txt` and strips apt/dpkg; needs a Docker or mount-capable host |
 | 4 | Boot chain and live ISO | not implemented | `make iso` exits 2 |
 | 5 | Plasma 6 desktop session | not implemented | no `desktop/` sources |
 | 6 | Zaod Fluent design system | not implemented | no tokens, no theme, no screenshots |
 | 7 | `.zaod` format and package manager | done (one gap) | `make zaod-test` (97 tests), `make hello` |
 | 8 | Core apps, Firefox ESR, Store, Control Center | built, partly unverified | `make apps` (13 packages), `make firefox`, `make store-index`, `make smoke` |
 | 9 | Zaod Studio and project templates | built | `make studio`, `make studio-test` (16 tests) |
-| 10 | Installer, OOBE, updates, QA, release | not implemented | nothing in the tree |
+| 10 | Installer, OOBE, updates, release | tooling built, image blocked | `make zaod-test` incl. 9 bundle tests, `apps/oobe`, `installer/`, `make store-release`, `docs/reports/phase-10.md` |
 
-Test totals today: 97 package-manager + 43 application + 16 Studio = **156 tests, all passing**.
+Test totals today: 97 package-manager + 9 update-bundle + 43 application + 16 Studio = **165 tests**.
 
 ## Known gaps (in the order they block the release)
 
-1. **Phase 3 has no code.** There is no `rootfs/packages.list`, no post-install
-   hardening, no apt/dpkg removal and no SBOM export. Phases 4, 5, 6 and 10 all
-   depend on it, so nothing downstream can be tested until it exists.
+1. **Phase 3 has no artifact.** `scripts/build-rootfs.sh` now records the requested
+   package set and removes apt/dpkg before packing (and re-checks the tarball), but
+   the 150 MB tarball itself has never been produced here: this sandbox denies the
+   chroot mounts that mmdebstrap and debootstrap need. Build it on a Docker-capable
+   host. Phases 4, 5, 6 and the installer gate depend on it.
 2. **Phase 2 has no committed kernel artifact.** `build/` is gitignored, so
    `uname -r` = `6.18.x-zaod` in QEMU, "compressed kernel < 15 MB", and "two clean
    builds produce the same config and module list" are still unproven by anyone
@@ -54,6 +56,7 @@ make test              # 97 + 43 + 16 tests
 make apps              # 13 signed-ready .zaod packages in build/out/apps
 make firefox           # official ESR repackaged, policy added, payload unchanged
 make store-index ZAOD_KEY=...   # 14 packages, signed index in build/out/store
+make store-release VERSION=1.0.0 ZAOD_KEY=...   # release dir with checksums + notes
 make smoke             # every app window started offscreen, PNGs in build/out/screens
 make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
 ```
@@ -99,6 +102,27 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
   and mount preflight, `make store-index` now depends on `apps` and `firefox`.
 - Rootfs evidence still missing: this sandbox denies the chroot mounts debootstrap
   needs, so the 150 MB trixie tarball must be produced on a Docker-capable host.
+
+### 2026-11-15: phase 10 tooling, plus repairs to the phase 3/QA push
+
+- Phase 10 landed on `main`: `zaodlib/update.py` with the `.zaodbundle` format
+  (bundle.json + CHECKSUMS + Ed25519 SIGNATURE + packages), `zaod bundle
+  create/verify/apply/rollback`, 9 bundle tests, `apps/oobe` first-boot setup with
+  privacy switches off by default, `installer/` Calamares settings and branding,
+  `scripts/release.sh` (+ `make release`/`store-release`) emitting SHA256SUMS,
+  release.json(.sig), RELEASE-NOTES.md and SOURCE-OFFER.txt, and the docs
+  (`docs/user/guide.md`, `docs/release.md`, `docs/licenses.md`).
+- Real bundle run: shell demo 0.1.0 -> 0.2.0 applied and rolled back to 0.1.0 with
+  the snapshot kept in `/var/lib/zaod/updates/<stamp>-<target>/`.
+- Repairs to the previous push: `scripts/fetch.sh`, `scripts/build-rootfs.sh` and
+  `tests/sandbox-proof.sh` had lost their executable bit (restored); the rootfs
+  `--include` list was built with line-wrap spaces inside the names, so a bootstrap
+  would have failed (now a clean comma list); and the rootfs still shipped apt and
+  dpkg, contradicting the phase 3 requirement, so the script now records
+  `build/out/rootfs-packages.txt`, strips package management from both the Docker
+  and bootstrap paths, and refuses a tarball that still matches apt/dpkg.
+- Still blocked here: every QEMU/ISO item (no image), the Phase 2 kernel artifact,
+  the Phase 7 network half of the sandbox proof, and the owner's hardware matrix.
 
 ### 2026-11-15: first pass over phases 8 and 9 (after the store/Studio commits)
 

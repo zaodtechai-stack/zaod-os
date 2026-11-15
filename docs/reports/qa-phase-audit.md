@@ -81,3 +81,22 @@
 - Phases 3-6 and 8-10 have no code in this repository; nothing there can be tested.
 - The network half of the Phase 7 sandbox proof and the Phase 2 QEMU boot need a
   host with namespace creation, KVM or a real 2-core machine.
+
+## Follow-up: phase 10 push and repairs (later on 2026-11-15)
+
+Phase 10 tooling was added after this audit (`zaodlib/update.py`, `zaod bundle`,
+`apps/oobe`, `installer/`, `scripts/release.sh`, user/release/licence docs). Three
+defects in the audited push were found and fixed at the same time:
+
+- `scripts/fetch.sh`, `scripts/build-rootfs.sh` and `tests/sandbox-proof.sh` were
+  committed without their executable bit; restored.
+- `scripts/build-rootfs.sh` built the `--include` list from a line-wrapped variable,
+  leaving spaces inside package names, so mmdebstrap/debootstrap would have rejected
+  the list; it is now a normalised comma list.
+- The rootfs shipped `apt` and `dpkg` even though phase 3 requires a runtime with no
+  distro package management; the script now records `build/out/rootfs-packages.txt`,
+  strips package management in both backends, verifies the tree, and refuses any
+  tarball that still contains `apt`, `dpkg` or `/var/lib/dpkg/status`.
+
+Neither the rootfs artifact nor the ISO exists yet, so the phase 3/4 gates in this
+audit stay open.
