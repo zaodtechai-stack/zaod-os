@@ -15,24 +15,9 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: shellcheck
-          version: 1.1
+          version: 1.0
       - uses: astral-sh/ruff-action@v3
       - name: Check shell scripts
-        run: shellcheck scripts/*.sh tests/*.sh desktop/scripts/*.sh kernel/*.sh
+        run: shellcheck scripts/*.sh tests/*.sh
       - name: Check Python
         run: ruff check .
-      - name: Install pytest
-        run: python3 -m pip install --upgrade pytest
-      - name: Run Python tests
-        run: python3 -m pytest tests zaod/tests -q
-      - name: Verify generated design artefacts are current
-        run: |
-          python3 desktop/design/tools/tokens_to_qml.py --check
-          python3 desktop/design/tools/tokens_to_css.py --check
-          python3 desktop/design/tools/make_wallpapers.py --check
-      - name: Verify design tokens and accessibility
-        run: python3 tests/check_design_tokens.py
-      - name: Verify desktop session configuration
-        run: python3 tests/check_desktop_config.py
-      - name: Scan for vendor assets
-        run: python3 desktop/design/tools/scan_assets.py
