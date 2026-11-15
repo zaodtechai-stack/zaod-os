@@ -60,7 +60,7 @@ make doctor            # host report -> build/logs/doctor.log (never overwrites 
 make fetch             # kernel tarball, PGP + SHA256 (falls back to HTTPS key fetch)
 make zaod-lint         # ruff + shellcheck over scripts, tests, kernel, apps
 make test              # 97 + 43 + 16 tests
-make apps              # 13 signed-ready .zaod packages in build/out/apps
+make apps              # 12 signed-ready .zaod packages in build/out/apps (+ firefox = 13)
 make firefox           # official ESR repackaged, policy added, payload unchanged
 make store-index ZAOD_KEY=...   # 14 packages, signed index in build/out/store
 make store-release VERSION=1.0.0 ZAOD_KEY=...   # release dir with checksums + notes
