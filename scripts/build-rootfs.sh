@@ -27,6 +27,9 @@ ROOTFS_TARBALL="${ROOTFS_TARBALL:-$OUT_DIR/zaod-rootfs.tar}"
 KERNEL_OUT="${KERNEL_OUT:-$OUT_DIR/kernel}"
 SQUASH_LEVEL="${SQUASH_LEVEL:-19}"
 DEBIAN_SUITE="${DEBIAN_SUITE:-trixie}"
+# A host keyring older than the suite being bootstrapped cannot verify its
+# InRelease file; point this at a current debian-archive-keyring when needed.
+DEBIAN_KEYRING="${DEBIAN_KEYRING:-}"
 DEBIAN_MIRROR="${DEBIAN_MIRROR:-https://deb.debian.org/debian}"
 MAX_UNCOMPRESSED_MB="${MAX_UNCOMPRESSED_MB:-3584}"
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1794700800}"
@@ -145,13 +148,14 @@ printf '%s\n' "${packages[@]}" > build/packages.resolved.txt
 INCLUDE="$(paste -sd, build/packages.resolved.txt)"
 if [[ "$BUILDER" == "mmdebstrap" ]]; then
   as_root mmdebstrap \
+    ${DEBIAN_KEYRING:+--keyring="$DEBIAN_KEYRING"} \
     --variant=important \
     --include="$INCLUDE" \
     --components=main,contrib,non-free-firmware \
     --aptopt='APT::Install-Recommends "false";' \
     "$DEBIAN_SUITE" "$ROOTFS_DIR" "$DEBIAN_MIRROR"
 else
-  as_root debootstrap --variant=minbase --components=main,contrib,non-free-firmware \
+  as_root debootstrap ${DEBIAN_KEYRING:+--keyring="$DEBIAN_KEYRING"} --variant=minbase --components=main,contrib,non-free-firmware \
     --include="$INCLUDE" \
     "$DEBIAN_SUITE" "$ROOTFS_DIR" "$DEBIAN_MIRROR"
 fi

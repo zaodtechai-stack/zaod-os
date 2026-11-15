@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -82,8 +83,21 @@ def remove_tree(path: Path) -> None:
     if path.is_symlink() or (path.exists() and not path.is_dir()):
         path.unlink(missing_ok=True)
         return
-    if path.is_dir():
-        shutil.rmtree(path)
+    if not path.is_dir():
+        return
+
+    def restore_write(function, target, _error) -> None:
+        # Installed applications live in a read-only store, so removal has to
+        # make each directory writable on the way down instead of failing with
+        # EACCES for an unprivileged user.
+        mode = stat.S_IMODE(os.lstat(target).st_mode)
+        os.chmod(target, mode | 0o200)
+        function(target)
+
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=restore_write)
+    else:  # pragma: no cover - the shipped image is Python 3.13
+        shutil.rmtree(path, onerror=lambda func, target, _info: restore_write(func, target, None))
 
 
 def make_read_only(root: Path) -> None:

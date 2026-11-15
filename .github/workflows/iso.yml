@@ -48,8 +48,20 @@ jobs:
             printf '%-14s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
           done
 
+      - name: Fetch the current Debian archive keyring
+        # The runner image ships a keyring older than trixie, which cannot
+        # verify the trixie InRelease file.
+        run: |
+          set -euo pipefail
+          base="https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/"
+          pkg="$(curl -fsSL "$base" | grep -o 'debian-archive-keyring_[0-9.]*_all\.deb' | sort -V | tail -n 1)"
+          echo "installing $pkg"
+          curl -fsSLO "$base$pkg"
+          sudo dpkg -i "$pkg"
+          ls -l /usr/share/keyrings/debian-archive-keyring.gpg
+
       - name: Build root filesystem
-        run: sudo -E bash scripts/build-rootfs.sh
+        run: sudo env DEBIAN_KEYRING=/usr/share/keyrings/debian-archive-keyring.gpg bash scripts/build-rootfs.sh
 
       - name: Build initramfs
         run: sudo -E bash scripts/make-initramfs.sh
