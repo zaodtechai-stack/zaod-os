@@ -1,0 +1,8 @@
+NAME="Zaod OS"
+ID=zaod
+ID_LIKE=debian
+PRETTY_NAME="Zaod OS 0.3.0"
+VERSION="0.3.0 (trixie)"
+VERSION_ID="0.3.0"
+VERSION_CODENAME=trixie
+ANSI_COLOR="1;34"
