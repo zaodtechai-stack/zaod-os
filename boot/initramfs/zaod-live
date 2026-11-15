@@ -35,8 +35,16 @@ INSTALLER=0
 mount -t devtmpfs -o mode=0755 devtmpfs /dev 2>/dev/null || true
 mount -t proc proc /proc || fail "cannot mount proc"
 mount -t sysfs sysfs /sys || fail "cannot mount sysfs"
-modprobe isofs 2>/dev/null || true
-modprobe usb-storage 2>/dev/null || true
+# Load the boot stack by name. The kernel autoloads a module by running
+# /sbin/modprobe, which only exists once this initramfs provides it, so leaving
+# squashfs, loop or overlay to autoload made `mount` fail and dropped the boot
+# into the rescue shell. A module that is built in, or simply absent, is not an
+# error here: the mount that needs it reports its own failure.
+for module in loop squashfs overlay isofs nls_cp437 nls_iso8859-1 nls_utf8 \
+              vfat fat sr_mod cdrom usb-storage xhci-hcd ehci-hcd ohci-hcd \
+              uhci-hcd usbhid hid-generic; do
+  modprobe "$module" 2>/dev/null || true
+done
 
 # Word-splitting the kernel command line is exactly what is wanted here.
 # shellcheck disable=SC2013

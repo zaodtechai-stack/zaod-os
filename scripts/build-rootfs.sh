@@ -207,13 +207,19 @@ if [[ "$KERNEL_SOURCE" == "packages" ]]; then
   if [[ ! -s "$KERNEL_OUT/vmlinuz" ]]; then
     fail "packaged kernel $KERNEL_RELEASE has no vmlinuz in /boot"
   fi
+  # depmod has to run before the modules are packed: modules.dep is what the
+  # initramfs build reads to select the boot drivers and their dependencies, and
+  # a packed archive without it fails the initramfs gate.
+  as_root depmod -a -b "$ROOTFS_DIR" "$KERNEL_RELEASE" \
+    || fail "depmod failed for packaged kernel $KERNEL_RELEASE"
+  [[ -s "$ROOTFS_DIR/lib/modules/$KERNEL_RELEASE/modules.dep" ]] \
+    || fail "depmod produced no modules.dep for packaged kernel $KERNEL_RELEASE"
   tar -czf "$KERNEL_OUT/modules.tar.gz" -C "$ROOTFS_DIR" "./lib/modules/$KERNEL_RELEASE"
   if [[ -d "$ROOTFS_DIR/lib/firmware" ]]; then
     tar -cJf "$KERNEL_OUT/firmware.tar.xz" -C "$ROOTFS_DIR" ./lib/firmware
   fi
   printf 'packaged kernel %s from the Debian %s archive\n' \
     "$KERNEL_RELEASE" "$DEBIAN_SUITE" > "$KERNEL_OUT/firmware-source-commit.txt"
-  as_root depmod -a -b "$ROOTFS_DIR" "$KERNEL_RELEASE" || true
 else
 say "installing Phase 2 kernel $KERNEL_RELEASE, modules and pinned firmware"
 as_root install -d "$ROOTFS_DIR/boot" "$ROOTFS_DIR/lib/firmware"
