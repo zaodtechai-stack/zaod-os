@@ -1,0 +1,12 @@
+/build/
+/.venv/
+*.iso
+*.squashfs
+*.tar
+*.tar.xz
+*.tar.zst
+*.qcow2
+*.img
+__pycache__/
+*.py[cod]
+.ruff_cache/
