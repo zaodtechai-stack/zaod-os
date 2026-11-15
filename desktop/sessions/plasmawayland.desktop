@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Zaod Desktop (Wayland)
+Comment=Zaod OS Plasma 6 session, Wayland with Xwayland fallback
+Exec=/usr/bin/startplasma-wayland
+TryExec=/usr/bin/startplasma-wayland
+DesktopNames=KDE
+X-KDE-PluginInfo-Name=plasmawayland
+Keywords=wayland;plasma;zaod;

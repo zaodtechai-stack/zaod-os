@@ -1,0 +1,30 @@
+[Unit]
+Description=Zaod OS Lite mode detection and session tuning
+Documentation=https://github.com/zaodtechai-stack/zaod-os/blob/main/docs/desktop.md
+After=local-fs.target
+Before=display-manager.service
+ConditionPathExists=/usr/lib/zaod/lite_mode.py
+ConditionPathExists=/proc/meminfo
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /usr/lib/zaod/lite_mode.py --apply
+ExecStartPost=/usr/bin/python3 /usr/lib/zaod/lite_mode.py --status
+# The detector only reads /proc and /sys and writes KDE config; keep it closed.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/etc/skel/.config /home
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zaod-lite-mode
+
+[Install]
+WantedBy=multi-user.target

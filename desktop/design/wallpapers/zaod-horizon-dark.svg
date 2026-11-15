@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" width="2560" height="1440" shape-rendering="geometricPrecision">
+<title>Zaod OS Horizon (dark)</title>
+<desc>Original generative artwork generated from the Zaod Fluent design tokens.</desc>
+<defs>
+<linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4CC2FF" stop-opacity="0.42"/><stop offset="1" stop-color="#4CC2FF" stop-opacity="0.02"/></linearGradient>
+</defs>
+<rect width="2560" height="1440" fill="#14161A"/>
+<rect x="0" y="812" width="2560" height="80" fill="#23272E" opacity="0.14"/>
+<rect x="0" y="764" width="2560" height="128" fill="#23272E" opacity="0.125"/>
+<rect x="0" y="716" width="2560" height="176" fill="#23272E" opacity="0.11"/>
+<rect x="0" y="668" width="2560" height="224" fill="#23272E" opacity="0.095"/>
+<rect x="0" y="620" width="2560" height="272" fill="#23272E" opacity="0.08"/>
+<rect x="0" y="572" width="2560" height="320" fill="#23272E" opacity="0.065"/>
+<rect x="0" y="524" width="2560" height="368" fill="#23272E" opacity="0.05"/>
+<rect x="0" y="892" width="2560" height="548" fill="url(#band)"/>
+<rect x="0" y="892" width="2560" height="2" fill="#626C7B" opacity="0.5"/>
+<circle cx="1843" cy="575" r="230" fill="#4CC2FF" opacity="0.5"/>
+</svg>

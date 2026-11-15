@@ -1,0 +1,8 @@
+module Zaod.Design
+singleton ZaodTheme 1.0 ZaodTheme.qml
+ZaodButton 1.0 ZaodButton.qml
+ZaodCard 1.0 ZaodCard.qml
+ZaodSwitch 1.0 ZaodSwitch.qml
+ZaodMenu 1.0 ZaodMenu.qml
+ZaodToolbar 1.0 ZaodToolbar.qml
+ZaodWindow 1.0 ZaodWindow.qml

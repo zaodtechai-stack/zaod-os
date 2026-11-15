@@ -1,0 +1,10 @@
+[Basic Settings]
+Indexing-Enabled=true
+Database=home:/var/lib/zaod/baloo
+
+[General]
+dbVersion=2
+exclude filters=*.o,*.part,*.iso,*.img,*.squashfs
+
+[KUIServer]
+Installed=true

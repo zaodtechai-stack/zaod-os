@@ -1,0 +1,31 @@
+[General]
+ColorScheme=ZaodDark
+Name=Zaod
+shadeSortColumn=true
+XftAntialias=true
+XftHinting=false
+XftSubPixel=rgb
+font=Inter,10,-1,5,50,0,0,0,0,0
+menuFont=Inter,10,-1,5,50,0,0,0,0,0
+toolBarFont=Inter,10,-1,5,50,0,0,0,0,0
+smallestReadableFont=Inter,8,-1,5,50,0,0,0,0,0
+fixed=JetBrains Mono,10,-1,5,50,0,0,0,0,0
+
+[KDE]
+AnimationDurationFactor=1
+SingleClick=false
+ShowDeleteCommand=false
+LookAndFeelPackage=org.zaod.desktop
+PlasmaTheme=Zaod
+widgetStyle=Zaod
+contrast=4
+
+[Icons]
+Theme=Zaod
+
+[KDE Action Restrictions][$i]
+action/balooctl=false
+action/kdesu=false
+
+[WM]
+activeFont=Inter,10,-1,5,75,0,0,0,0,0
