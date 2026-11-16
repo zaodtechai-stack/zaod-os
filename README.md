@@ -13,8 +13,8 @@ acceptance item stays unverified.
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Foundation, toolchain, feasibility | done, `docs/reports/phase-1.md` |
-| 2 | Kernel 6.18.63 with the Zaod config | config and validator done, kernel build artifact missing, `docs/reports/phase-2.md` |
-| 3 | Base system without distro packages | package set, files and build scripts done (91 checks), rootfs tarball not built, `docs/reports/phase-3.md` |
+| 2 | Kernel 6.18.63 with the Zaod config | config, validator and build script done; the release pipeline compiles it and the image ships it, `docs/reports/phase-2.md` |
+| 3 | Base system without distro packages | package set, files and build scripts done (91 checks), rootfs built by the release pipeline with the Zaod kernel, `docs/reports/phase-3.md` |
 | 4 | Boot chain and live ISO | initramfs, GRUB and xorriso code done (88 checks), ISO assembles but is not booted, `docs/reports/phase-4.md` |
 | 5 | Plasma 6 desktop session | session config and Lite mode done (715 checks), Plasma boot unverified, `docs/reports/phase-5.md` |
 | 6 | Zaod Fluent design system | done: tokens, components, icons, wallpapers, 48 screenshots, `docs/reports/phase-6.md` |

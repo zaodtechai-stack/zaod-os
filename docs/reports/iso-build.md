@@ -13,7 +13,9 @@ allows privileged mounts.
 ## What the workflow does
 
 1. Frees runner disk space, then installs `debootstrap`, `mmdebstrap`, `squashfs-tools`,
-   `xorriso`, `mtools`, `grub-pc-bin`, `grub-efi-amd64-bin`, `busybox-static`, `zstd`, `cpio`.
+   `xorriso`, `mtools`, `grub-pc-bin`, `grub-efi-amd64-bin`, `busybox-static`, `zstd`, `cpio`
+   in the image job, and the kernel toolchain (`gcc`, `bison`, `flex`, `libssl-dev`,
+   `libelf-dev`, `dwarves`, `gnupg`) in the kernel job.
 2. `scripts/build-rootfs.sh`: bootstraps Debian trixie from `rootfs/packages.list`
    (108 packages, Plasma 6, SDDM, Qt 6), applies the Zaod configuration, the Phase 6
    desktop layer, the apps, an initramfs, the SBOM, then squashes to
@@ -24,10 +26,26 @@ allows privileged mounts.
 5. Publishes `build/out/zaod-os-<version>-x86_64.iso` and `SHA256SUMS` as release assets, and
    keeps a 30-day workflow artifact.
 
-The kernel comes from the packaged `linux-image-amd64`, because the repository still has no
-Phase 2 from-source kernel artifact. `scripts/build-rootfs.sh` exports `vmlinuz`, `config`,
-`modules.tar.gz` and `firmware.tar.xz` into `build/out/kernel/` so the ISO and initramfs steps
-are identical either way.
+The kernel is the Zaod kernel: Linux 6.18.63 compiled from the pinned kernel.org source
+archive with `kernel/zaod_defconfig`, so `uname -r` on the released image reports
+`6.18.63-zaod`. A distribution kernel is deliberately **not** a fallback - this OS ships its
+own kernel, and a silent downgrade to `linux-image-amd64` would hide a broken kernel build
+behind an image that still boots.
+
+The workflow therefore has two jobs:
+
+1. `kernel` - installs a toolchain, runs `make fetch` (the archive is verified against the
+   signed `sha256sums.asc`), then `make kernel` (Linux 6.18.63 + `scripts/build-firmware.sh`),
+   proves the packed modules report `6.18.*-zaod`, and uploads `build/out/kernel/` as the
+   `zaod-kernel` artifact. `actions/cache` keyed on `kernel/zaod_defconfig` plus the build
+   scripts keeps a previous build, so an ISO-only change does not recompile the kernel.
+2. `build-iso` - downloads that artifact into `build/out/kernel/`, then runs the rootfs,
+   initramfs and ISO steps and fails if `build/logs/rootfs-report.txt` does not name a
+   `6.18.*-zaod` kernel.
+
+`scripts/build-rootfs.sh` installs `vmlinuz`, `System.map`, `modules.tar.gz` and
+`firmware.tar.xz` from `build/out/kernel/` and refuses to build without them, and
+`linux-image-amd64` is no longer in `rootfs/packages.list`.
 
 ## Running it
 

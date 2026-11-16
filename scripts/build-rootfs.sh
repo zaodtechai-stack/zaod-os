@@ -103,21 +103,21 @@ done
 grep -qx 'ID=zaod' "$FILES_DIR/etc/os-release" || fail "os-release does not identify Zaod OS"
 grep -q 'NAME="Zaod OS"' "$FILES_DIR/etc/os-release" || fail "os-release name is wrong"
 
-# Kernel source: Phase 2 artifacts when they exist, otherwise the kernel the
-# installed packages provide (linux-image-amd64). Building the kernel from
-# source needs a toolchain and hours; a released image must not depend on that.
-KERNEL_SOURCE="phase2"
-if [[ -s "$KERNEL_OUT/vmlinuz" && -s "$KERNEL_OUT/modules.tar.gz" ]]; then
-  mapfile -t kernel_releases < <(tar -tzf "$KERNEL_OUT/modules.tar.gz" \
-    | sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' | LC_ALL=C sort -u)
-  (( ${#kernel_releases[@]} == 1 )) || fail "expected one kernel release in modules.tar.gz"
-  KERNEL_RELEASE="${kernel_releases[0]}"
-else
-  KERNEL_SOURCE="packages"
-  KERNEL_RELEASE=""
-  grep -qx 'linux-image-amd64' "$PACKAGE_LIST" \
-    || fail "no Phase 2 kernel and linux-image-amd64 is not in $PACKAGE_LIST"
-fi
+# The image ships the Zaod kernel built from source (kernel/build.sh). A
+# distribution kernel is not a fallback: the released image must report
+# `uname -r` = 6.18.x-zaod, so a missing kernel artifact is a build failure
+# rather than a silent downgrade to whatever the archive ships.
+KERNEL_RELEASE=""
+missing=()
+for artifact in vmlinuz modules.tar.gz firmware.tar.xz; do
+  [[ -s "$KERNEL_OUT/$artifact" ]] || missing+=("$KERNEL_OUT/$artifact")
+done
+(( ${#missing[@]} == 0 )) \
+  || fail "no Zaod kernel to install: ${missing[*]} is missing; run scripts/fetch.sh, then make kernel"
+mapfile -t kernel_releases < <(tar -tzf "$KERNEL_OUT/modules.tar.gz" \
+  | sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' | LC_ALL=C sort -u)
+(( ${#kernel_releases[@]} == 1 )) || fail "expected one kernel release in modules.tar.gz"
+KERNEL_RELEASE="${kernel_releases[0]}"
 
 printf '[rootfs] inputs ok\n  builder     %s\n  suite       %s\n  packages    %d\n  removal     %d paths\n  squashfs    %s (zstd level %s)\n' \
   "$BUILDER" "$DEBIAN_SUITE" "${#packages[@]}" "${#removals[@]}" "$SQUASHFS" "$SQUASH_LEVEL"
@@ -187,40 +187,6 @@ SKEL
 as_root chmod 0644 "$ROOTFS_DIR/etc/skel/.profile"
 
 # ---------------------------------------------------------------- 3. kernel
-if [[ "$KERNEL_SOURCE" == "packages" ]]; then
-  # The package manager already placed the kernel, its modules and the firmware
-  # in the root. Record them where the ISO and the initramfs tools look for a
-  # Phase 2 kernel, so the rest of the pipeline is source-agnostic.
-  KERNEL_RELEASE="$(basename "$(find "$ROOTFS_DIR/lib/modules" -maxdepth 1 -mindepth 1 \
-    -type d | LC_ALL=C sort | tail -n 1)")"
-  [[ -n "$KERNEL_RELEASE" ]] || fail "no kernel modules found in the rootfs"
-  say "no Phase 2 kernel artifacts: using packaged kernel $KERNEL_RELEASE"
-  as_root install -d "$KERNEL_OUT"
-  for artifact in "vmlinuz:$ROOTFS_DIR/boot/vmlinuz-$KERNEL_RELEASE" \
-                  "System.map:$ROOTFS_DIR/boot/System.map-$KERNEL_RELEASE" \
-                  "config:$ROOTFS_DIR/boot/config-$KERNEL_RELEASE"; do
-    name="${artifact%%:*}"; source_path="${artifact#*:}"
-    if [[ -f "$source_path" ]]; then
-      cp -f "$source_path" "$KERNEL_OUT/$name"
-    fi
-  done
-  if [[ ! -s "$KERNEL_OUT/vmlinuz" ]]; then
-    fail "packaged kernel $KERNEL_RELEASE has no vmlinuz in /boot"
-  fi
-  # depmod has to run before the modules are packed: modules.dep is what the
-  # initramfs build reads to select the boot drivers and their dependencies, and
-  # a packed archive without it fails the initramfs gate.
-  as_root depmod -a -b "$ROOTFS_DIR" "$KERNEL_RELEASE" \
-    || fail "depmod failed for packaged kernel $KERNEL_RELEASE"
-  [[ -s "$ROOTFS_DIR/lib/modules/$KERNEL_RELEASE/modules.dep" ]] \
-    || fail "depmod produced no modules.dep for packaged kernel $KERNEL_RELEASE"
-  tar -czf "$KERNEL_OUT/modules.tar.gz" -C "$ROOTFS_DIR" "./lib/modules/$KERNEL_RELEASE"
-  if [[ -d "$ROOTFS_DIR/lib/firmware" ]]; then
-    tar -cJf "$KERNEL_OUT/firmware.tar.xz" -C "$ROOTFS_DIR" ./lib/firmware
-  fi
-  printf 'packaged kernel %s from the Debian %s archive\n' \
-    "$KERNEL_RELEASE" "$DEBIAN_SUITE" > "$KERNEL_OUT/firmware-source-commit.txt"
-else
 say "installing Phase 2 kernel $KERNEL_RELEASE, modules and pinned firmware"
 as_root install -d "$ROOTFS_DIR/boot" "$ROOTFS_DIR/lib/firmware"
 as_root install -m 0644 "$KERNEL_OUT/vmlinuz" "$ROOTFS_DIR/boot/vmlinuz-$KERNEL_RELEASE"
@@ -241,7 +207,6 @@ if [[ -d "$ROOTFS_DIR/lib/firmware/LICENSES" ]]; then
 fi
 as_root install -m 0644 "$KERNEL_OUT/firmware-source-commit.txt" \
   "$ROOTFS_DIR/usr/share/zaod/licenses/linux-firmware/source-commit.txt"
-fi
 
 # The initramfs must be generated before package management is removed.
 say "generating initramfs for $KERNEL_RELEASE"

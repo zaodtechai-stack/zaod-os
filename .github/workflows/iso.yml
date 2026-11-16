@@ -4,8 +4,12 @@ name: iso
 # a nested sandbox does not. Every input is the same tree a developer builds from:
 # rootfs/packages.list, the Phase 6 desktop layer, apps/ and boot/.
 #
-# The kernel comes from linux-image-amd64 when no Phase 2 kernel artifact exists,
-# so a release image never waits on a from-source kernel build.
+# The image ships the Zaod kernel: Linux 6.18.63 built from the source archive
+# pinned in docs/versions.md with kernel/zaod_defconfig. A distribution kernel is
+# deliberately not a fallback - `uname -r` on the released image has to report
+# 6.18.63-zaod - so the kernel is built in its own job and handed to the image
+# job, and a failed kernel build stops the release instead of silently producing
+# a Debian-kernel image.
 
 on:
   workflow_dispatch:
@@ -15,6 +19,7 @@ on:
       - "scripts/**"
       - "rootfs/**"
       - "boot/**"
+      - "kernel/**"
       - "apps/**"
       - "desktop/**"
       - "Makefile"
@@ -24,9 +29,97 @@ permissions:
   contents: write
 
 jobs:
-  build-iso:
+  kernel:
+    name: kernel 6.18.63-zaod
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    # A full x86_64 kernel build is the longest step in the pipeline; the budget
+    # leaves room for a compile on the two-core runner without ever being the
+    # reason a release is cut early.
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/az
+          sudo apt-get clean
+          df -h /
+
+      - name: Install kernel build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc bison flex libssl-dev libelf-dev dwarves \
+            cpio zstd xz-utils git gnupg python3 ca-certificates
+          for tool in gcc make bison flex cpio zstd xz git gpg python3; do
+            printf '%-10s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
+          done
+
+      - name: Restore a kernel built from this exact config
+        id: kernel-cache
+        uses: actions/cache@v4
+        with:
+          path: build/out/kernel
+          key: kernel-6.18.63-${{ hashFiles('kernel/zaod_defconfig', 'kernel/build.sh', 'scripts/fetch.sh', 'scripts/build-firmware.sh') }}
+
+      - name: Fetch the pinned kernel source and verify its signature
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: make fetch
+
+      - name: Build the Zaod kernel, its modules and the firmware bundle
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: make kernel
+
+      - name: Prove the artifact is the Zaod kernel
+        # The image must never need to trust a version string in a document: the
+        # release is read out of the packed modules, which carry the kernel's own
+        # release name, and the config has to be the one this repository ships.
+        run: |
+          set -euo pipefail
+          ls -l build/out/kernel
+          for artifact in vmlinuz modules.tar.gz firmware.tar.xz System.map config; do
+            test -s "build/out/kernel/$artifact" || {
+              echo "build/out/kernel/$artifact is missing" >&2
+              exit 1
+            }
+          done
+          release="$(tar -tzf build/out/kernel/modules.tar.gz \
+            | sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' | LC_ALL=C sort -u | head -n 1)"
+          printf 'kernel release: %s\n' "$release"
+          case "$release" in
+            6.18.*-zaod) ;;
+            *)
+              echo "the image would ship '$release', not the Zaod 6.18 kernel" >&2
+              exit 1
+              ;;
+          esac
+          cmp -s build/out/kernel/config kernel/zaod_defconfig \
+            || echo "note: the built config differs from kernel/zaod_defconfig (build.sh normalises it)"
+          tar -tzf build/out/kernel/modules.tar.gz | grep -qx "./lib/modules/$release/modules.dep" \
+            || { echo "modules.dep is missing from the modules archive" >&2; exit 1; }
+          sha256sum build/out/kernel/vmlinuz build/out/kernel/modules.tar.gz
+
+      - name: Upload the kernel for the image job
+        uses: actions/upload-artifact@v4
+        with:
+          name: zaod-kernel
+          path: |
+            build/out/kernel/vmlinuz
+            build/out/kernel/System.map
+            build/out/kernel/config
+            build/out/kernel/modules.tar.gz
+            build/out/kernel/modules.list
+            build/out/kernel/firmware.tar.xz
+            build/out/kernel/firmware-source-commit.txt
+          retention-days: 30
+          if-no-files-found: error
+
+  build-iso:
+    name: image
+    needs: kernel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +143,8 @@ jobs:
 
       - name: Fetch the current Debian archive keyring
         # The runner image ships a keyring older than trixie, which cannot
-        # verify the trixie InRelease file.
+        # verify the trixie InRelease file. This is the archive keyring for the
+        # base system only; the kernel comes from the build above.
         run: |
           set -euo pipefail
           base="https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/"
@@ -60,6 +154,12 @@ jobs:
           sudo dpkg -i "$pkg"
           ls -l /usr/share/keyrings/debian-archive-keyring.gpg
 
+      - name: Fetch the Zaod kernel from the kernel job
+        uses: actions/download-artifact@v4
+        with:
+          name: zaod-kernel
+          path: build/out/kernel
+
       - name: Build root filesystem
         run: sudo env DEBIAN_KEYRING=/usr/share/keyrings/debian-archive-keyring.gpg bash scripts/build-rootfs.sh
 
@@ -68,6 +168,19 @@ jobs:
 
       - name: Assemble ISO
         run: sudo -E bash scripts/make-iso.sh
+
+      - name: Confirm the ISO carries the Zaod kernel
+        run: |
+          set -euo pipefail
+          release="$(grep -m 1 '^kernel: ' build/logs/rootfs-report.txt | cut -d' ' -f2)"
+          printf 'rootfs kernel: %s\n' "$release"
+          case "$release" in
+            6.18.*-zaod) ;;
+            *)
+              echo "the rootfs carries '$release', not the Zaod kernel" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Hand the build output back to the runner
         # Every build step runs through sudo, so build/out and the image inside
@@ -101,7 +214,8 @@ jobs:
           body: |
             Live/installable hybrid ISO built from `${{ github.sha }}`.
 
-            Kernel: packaged `linux-image-amd64` (no Phase 2 from-source artifact present).
+            Kernel: Linux 6.18.63-zaod, compiled from the pinned kernel.org source
+            archive with `kernel/zaod_defconfig`. No distribution kernel is involved.
             Desktop: Plasma 6 with the Zaod Fluent design layer from Phase 6.
             Verify with `sha256sum -c SHA256SUMS` before writing to USB.
           files: |

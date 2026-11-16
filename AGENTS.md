@@ -11,7 +11,7 @@ Work on `main` only, and never revert or rewrite another agent's phase.
 | Phase | Scope | State | Proof |
 | --- | --- | --- | --- |
 | 1 | Foundation, toolchain, feasibility | done | `make doctor`, `make fetch`, Ruff + ShellCheck |
-| 2 | Kernel 6.18.63 with the Zaod config | partial | `python3 tests/check_kernel_config.py kernel/zaod_defconfig` (95 options) |
+| 2 | Kernel 6.18.63 with the Zaod config | built by the release pipeline, which the image consumes | `python3 tests/check_kernel_config.py kernel/zaod_defconfig` (95 options); `kernel` job of `.github/workflows/iso.yml` |
 | 3 | Rootfs without distro package management | configs pass, artifact blocked | `python3 tests/check_rootfs_config.py` (91 checks); `make rootfs` still needs the kernel artifact and a mount-capable host |
 | 4 | Boot chain and live ISO | configs pass, ISO blocked | `python3 tests/check_boot_config.py` (88 checks); `make iso` needs rootfs + initramfs |
 | 5 | Plasma 6 desktop session | configs pass, session unverified | `python3 tests/check_desktop_config.py` (715 checks), `tests/test_lite_mode.py` |
@@ -239,3 +239,17 @@ surface, 39 nav glyphs and 15 app tiles, a flat wallpaper tier, and two new gate
 `docs/reports/phase-6-screenshots/`. Report: `docs/reports/phase-6.md`.
 Calendar and Files still have no app package; Firefox and every image-level item stay
 blocked until Phases 3-5 produce a bootable rootfs/ISO.
+
+### 2026-11-16: the image ships the Zaod kernel, not a distribution kernel
+
+- The release pipeline now compiles Linux 6.18.63 from the pinned kernel.org archive with
+  `kernel/zaod_defconfig` in its own `kernel` job, uploads `vmlinuz`, `System.map`, `config`,
+  `modules.tar.gz`, `modules.list` and `firmware.tar.xz`, and the image job consumes that
+  artifact. `actions/cache` keyed on the config and build scripts means an ISO-only change
+  reuses the previous compile.
+- The Debian fallback is gone: `linux-image-amd64` left `rootfs/packages.list`, and
+  `scripts/build-rootfs.sh` now fails with an actionable message instead of quietly building
+  an image around the archive's kernel. The image job also asserts
+  `build/logs/rootfs-report.txt` names a `6.18.*-zaod` kernel before it publishes.
+- Released images built before this change carried `linux-image-amd64`; `iso-15` and earlier
+  must not be described as running the Zaod kernel.
