@@ -72,7 +72,7 @@ mount -t sysfs sysfs /sys || fail "cannot mount sysfs"
 for module in loop squashfs overlay isofs nls_cp437 nls_iso8859-1 nls_utf8 \
               vfat fat sr_mod cdrom sd_mod libata ata_piix ahci virtio_blk \
               usb-storage uas xhci-hcd xhci-pci ehci-hcd ehci-pci ohci-hcd \
-              ohci-pci uhci-hcd virtio-pci usbhid hid-generic; do
+              ohci-pci uhci-hcd usbhid hid-generic; do
   modprobe "$module" 2>/dev/null || true
 done
 
