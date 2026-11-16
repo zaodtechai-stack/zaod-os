@@ -253,3 +253,20 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   `build/logs/rootfs-report.txt` names a `6.18.*-zaod` kernel before it publishes.
 - Released images built before this change carried `linux-image-amd64`; `iso-15` and earlier
   must not be described as running the Zaod kernel.
+
+### 2026-11-16: iso-23 verified, and the panic photo identified
+
+- `iso-23` (kernel 6.18.63-zaod, 1,108,705,280 bytes,
+  sha256 `b1f3f66c5fd07747e143d5246a61ecba28b34cb8c47e1e588ede8dda66ecea26`) was downloaded from
+  the release and checked against the published digest before being booted.
+- Booted from CD: `using boot media /dev/sr0`, squashfs mounted, `kernel 6.18.63-zaod`,
+  reached `zaod login`. No panic, and no oops in the network path after the RX fix.
+- Booted as a raw USB-style disk under UEFI: `using boot media /dev/sda`, squashfs mounted,
+  reached `zaod login`. Legacy BIOS boot of the same raw image stalls in GRUB under SeaBIOS
+  with TCG, which the CD and UEFI paths do not, so it is an emulation limit rather than a bad
+  boot image.
+- The kernel panic reported on real hardware (`Attempted to kill init! exitcode=0x00000100`,
+  `PID: 1 Comm: init`, kernel `6.12.107+deb13-amd64`, media-scan wording `(1/30)`) comes from
+  an image built before `46b4c93`: a distribution kernel plus the init that could still exit.
+  `iso-21` and later carry 6.18.63-zaod and a PID 1 that reopens its rescue shell instead of
+  exiting, so that panic cannot recur.
