@@ -291,3 +291,24 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
 - `tests/test_pid1_supervisor.py` runs the supervisor with a failing child, a
   SIGKILLed child and a ready child, and asserts `/init` and `/init-boot` carry no
   `set -e`. It is wired into `scripts/ci-checks.sh`.
+
+### 2026-11-17: the live account has a password a person can type
+
+- Reported: "ZAOD live ka login pass cut ho gaya, dobara nahi aaya". There was no
+  password to read. `scripts/build-rootfs.sh` ran `passwd --lock zaodlive`, so the
+  only way in was SDDM autologin; anyone on the text console (graphical session did
+  not start, or the prompt scrolled past) had no account at all, and `zaod login:`
+  is the hostname, not a user name.
+- The build now sets a live password: `zaodlive` / `zaod`. Autologin still starts
+  the session by itself, the text console accepts the same credentials, `sudo`
+  works because `zaodlive` is in `wheel`, and `/etc/issue` prints both values above
+  every login prompt so nothing depends on catching a line mid-scroll.
+- Verified against the extracted iso-24 rootfs that the chpasswd step writes a real
+  yescrypt hash, and the shipped image after this change accepts that login on
+  ttyS0.
+- Open: on the QEMU test box the boot reaches `zaod login:` but never reaches
+  `multi-user.target`, so `sddm` never starts. The image ships sddm, plasma,
+  `default.target -> graphical.target` and `display-manager.service -> sddm.service`,
+  so the block is inside the boot transaction (plymouth-quit-wait has not returned
+  in every captured run). That is a Phase 5 desktop issue, separate from the
+  password fix, and needs a machine with a KMS driver to rule out the emulated GPU.

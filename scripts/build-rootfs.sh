@@ -37,6 +37,10 @@ PACKAGE_LIST="rootfs/packages.list"
 REMOVE_LIST="rootfs/rootfs.remove.list"
 FILES_DIR="rootfs/files"
 CHECK=0
+# Live media credentials. The account exists only on the live image; the
+# installer deletes it. Keep these in step with docs/desktop.md and /etc/issue.
+LIVE_USER="${LIVE_USER:-zaodlive}"
+LIVE_PASSWORD="${LIVE_PASSWORD:-zaod}"
 
 [[ "${1:-}" == "--check" ]] && CHECK=1
 
@@ -256,13 +260,38 @@ if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent passwd zaodlive >/dev/null 2>&
   as_root chroot "$ROOTFS_DIR" /usr/sbin/useradd --create-home --shell /bin/bash \
     --groups wheel,audio,video,render,input,netdev zaodlive
 fi
-# Debian ships passwd as /usr/bin/passwd in a merged-usr image, so resolve it
-# instead of assuming the split-usr path.
+# The live account needs a password a person can actually type.
+#
+# iso-16 .. iso-24 ran `passwd --lock zaodlive`. That is invisible on the SDDM
+# autologin path, but it leaves anyone who lands on the text console - a machine
+# whose graphical session did not come up, or a login line that scrolled away
+# before it was read - with no way into their own live session at all. The
+# password below is the live media password, it is printed on the console by
+# /etc/issue, and it is documented in docs/desktop.md. It only ever exists on
+# the live image: the installer removes the zaodlive account.
+# Debian ships passwd/chpasswd in /usr/bin in a merged-usr image, so resolve
+# them instead of assuming the split-usr path.
 # shellcheck disable=SC2016  # the expansion belongs to the chroot
 as_root chroot "$ROOTFS_DIR" /bin/sh -c '
-  binary="$(command -v passwd)" || { echo "passwd is missing from the image" >&2; exit 1; }
-  "$binary" --lock zaodlive
-' >/dev/null
+  export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+  printf "%s:%s\n" "$1" "$2" | "$(command -v chpasswd)" || {
+    echo "chpasswd is missing from the image" >&2
+    exit 1
+  }
+' sh "$LIVE_USER" "$LIVE_PASSWORD" >/dev/null
+
+# The console banner repeats the credentials at every login prompt, so nothing
+# has to be caught mid-scroll, and it names the machine separately from the
+# account: `zaod login:` is the hostname, not a user name.
+as_root tee "$ROOTFS_DIR/etc/issue" >/dev/null <<ISSUE
+Zaod OS live session  \\n \\l
+
+  user: $LIVE_USER    password: $LIVE_PASSWORD
+
+The desktop starts by itself. If it did not come up, log in above and run:
+  sudo systemctl start sddm
+ISSUE
+as_root chmod 0644 "$ROOTFS_DIR/etc/issue"
 
 # ---------------------------------------------------------------- 4. SBOM
 say "exporting the SBOM and licence texts"

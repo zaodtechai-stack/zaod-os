@@ -74,9 +74,16 @@ desktop/scripts/lite-mode.sh --force-full      # override the measurement
 
 ## Live media versus installed system
 
-* Live images use `sddm.conf.d/zaod-live.conf`, which autologins the passwordless
-  `zaodlive` account. The installer removes that file; the installed system never
-  ships a passwordless account.
+* Live images use `sddm.conf.d/zaod-live.conf`, which autologins `zaodlive`. The
+  installer removes that file and the account; the installed system never ships a
+  live account.
+* The live credentials are `zaodlive` / `zaod`. The session logs in by itself, so
+  nothing has to be typed on the normal path, but the account is a real account:
+  the text console accepts it, `sudo` works, and `/etc/issue` repeats both values
+  above every `zaod login:` prompt. Earlier images (iso-16 .. iso-24) locked this
+  account, so anyone whose graphical session did not start had no way in.
+* `zaod login:` is the machine name (the hostname), not a user name. Log in as
+  `zaodlive`, not `zaod`.
 * Journald runs with `Storage=volatile` (`journald-live.conf`) so live sessions
   never write logs to the read-only squashfs.
 * `vm.swappiness=100` with `vm.page-cluster=0` matches the zram-only swap policy
