@@ -106,6 +106,14 @@ REQUIRED = {
 }
 
 
+# Nothing may rewrite kernel text while traffic is in flight: a static-key
+# poke in the RX path panicked the live system on boot.
+DISABLED = {
+    "CONFIG_JUMP_LABEL": "runtime INT3 pokes in the network RX path panic the kernel",
+    "CONFIG_PREEMPT_DYNAMIC": "boot-time static-call pokes of the same machinery",
+}
+
+
 def parse_config(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -141,6 +149,10 @@ def main() -> int:
             continue
         if val != expected:
             bad.append(f"{key}={val} (expected {expected})")
+
+    for key, why in DISABLED.items():
+        if values.get(key) is not None:
+            bad.append(f"{key}={values[key]} must stay off ({why})")
 
     ok = check_localversion(values)
     if not ok:

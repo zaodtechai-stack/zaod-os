@@ -154,6 +154,16 @@ make olddefconfig >/dev/null
 ./scripts/config --enable CONFIG_RANDOMIZE_BASE
 ./scripts/config --disable CONFIG_DEBUG_INFO
 
+# Runtime text pokes are the one thing that can kill the live system: a
+# static-key site in the network RX path was caught holding its INT3 when the
+# poke batch finished, and do_int3() had nothing to hand it to, so the box
+# panicked with "Fatal exception in interrupt" a minute into every boot.
+# Without jump labels the static keys are plain branches again and preempt
+# just picks its mode at compile time, so nothing rewrites kernel text while
+# packets are in flight.
+./scripts/config --disable CONFIG_JUMP_LABEL
+./scripts/config --disable CONFIG_PREEMPT_DYNAMIC
+
 make olddefconfig >/dev/null
 cp .config "$ROOT_DIR/kernel/zaod_defconfig"
 python3 "$ROOT_DIR/tests/check_kernel_config.py" "$CONFIG_FILE"
