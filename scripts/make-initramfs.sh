@@ -325,11 +325,11 @@ if (( unresolved )); then
   # whole than to leave out: the image gets bigger, never unbootable.
   printf 'make-initramfs: note: %d selected modules are named only by alias, carrying the whole module tree\n' \
     "$unresolved"
-  tar -xzf "$MODULES_ARCHIVE" -C "$STAGE"
+  tar -xzf "$MODULES_ARCHIVE" -C "$STAGE" --no-same-owner
 else
-  tar -xzf "$MODULES_ARCHIVE" -C "$STAGE" -T "$EXTRACT_LIST"
+  tar -xzf "$MODULES_ARCHIVE" -C "$STAGE" --no-same-owner -T "$EXTRACT_LIST"
   if (( ${#METADATA[@]} )); then
-    tar -xzf "$MODULES_ARCHIVE" -C "$STAGE" "${METADATA[@]}"
+    tar -xzf "$MODULES_ARCHIVE" -C "$STAGE" --no-same-owner "${METADATA[@]}"
   fi
 fi
 

@@ -188,12 +188,28 @@ as_root chmod 0644 "$ROOTFS_DIR/etc/skel/.profile"
 
 # ---------------------------------------------------------------- 3. kernel
 say "installing Phase 2 kernel $KERNEL_RELEASE, modules and pinned firmware"
-as_root install -d "$ROOTFS_DIR/boot" "$ROOTFS_DIR/lib/firmware"
+as_root install -d "$ROOTFS_DIR/boot"
 as_root install -m 0644 "$KERNEL_OUT/vmlinuz" "$ROOTFS_DIR/boot/vmlinuz-$KERNEL_RELEASE"
 as_root install -m 0644 "$KERNEL_OUT/System.map" "$ROOTFS_DIR/boot/System.map-$KERNEL_RELEASE"
-as_root tar -xzf "$KERNEL_OUT/modules.tar.gz" -C "$ROOTFS_DIR"
+# The modules archive carries its own leading ./lib/ entry. Extracted plainly
+# into a merged-/usr tree, that entry replaces the `lib -> usr/lib` symlink with
+# a real directory: the modules then land outside usr/lib, and every later path
+# under /lib stops existing. That is how a build died with
+# "tar: build/rootfs/lib/firmware: Cannot open: No such file or directory" -
+# the firmware step was the first thing to notice the symlink was gone.
+# --keep-directory-symlink extracts through the existing symlink instead of
+# overwriting it, and --no-same-owner keeps /lib/modules owned by root rather
+# than by whatever uid packaged the archive.
+as_root tar -xzf "$KERNEL_OUT/modules.tar.gz" -C "$ROOTFS_DIR" \
+  --keep-directory-symlink --no-same-owner
+[[ -d "$ROOTFS_DIR/lib/modules/$KERNEL_RELEASE" ]] \
+  || fail "the modules archive did not install into lib/modules/$KERNEL_RELEASE"
 as_root depmod -a -b "$ROOTFS_DIR" "$KERNEL_RELEASE"
-as_root tar -xJf "$KERNEL_OUT/firmware.tar.xz" -C "$ROOTFS_DIR/lib/firmware"
+as_root install -d "$ROOTFS_DIR/lib/firmware"
+as_root tar -xJf "$KERNEL_OUT/firmware.tar.xz" -C "$ROOTFS_DIR/lib/firmware" \
+  --no-same-owner
+[[ -d "$ROOTFS_DIR/lib/firmware" && -n "$(ls -A "$ROOTFS_DIR/lib/firmware" 2>/dev/null)" ]] \
+  || fail "the firmware archive unpacked nothing into lib/firmware"
 as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/licenses/linux-firmware"
 for notice in LICENSE LICENSE-CRITERIA.md WHENCE; do
   if [[ -f "$ROOTFS_DIR/lib/firmware/$notice" ]]; then

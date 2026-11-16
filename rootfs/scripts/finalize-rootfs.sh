@@ -20,12 +20,15 @@ mkdir -p /boot /lib/firmware /etc/systemd/system/multi-user.target.wants \
 chmod 1777 /tmp
 install -m 0644 "$INPUT_DIR/vmlinuz" "/boot/vmlinuz-$KERNEL_RELEASE"
 install -m 0644 "$INPUT_DIR/System.map" "/boot/System.map-$KERNEL_RELEASE"
-tar -xzf "$MODULES_ARCHIVE" -C /
+# Same merged-/usr trap as scripts/build-rootfs.sh: the archive carries a ./lib/
+# entry that would replace the lib -> usr/lib symlink with a real directory.
+tar -xzf "$MODULES_ARCHIVE" -C / --keep-directory-symlink --no-same-owner
 
 depmod -a -b / "$KERNEL_RELEASE"
 rm -rf "$FIRMWARE_STAGE"
 mkdir -p "$FIRMWARE_STAGE"
 tar -xJf "$FIRMWARE_ARCHIVE" -C "$FIRMWARE_STAGE"
+mkdir -p /lib/firmware
 for family in amdgpu ath3k-1.fw ath9k_htc ath10k ath11k brcm i915 intel mediatek radeon rtl_bt rtl_nic rtlwifi rtw88 rtw89; do
   if [[ -e "$FIRMWARE_STAGE/$family" ]]; then
     cp -a "$FIRMWARE_STAGE/$family" /lib/firmware/
