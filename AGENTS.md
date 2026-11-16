@@ -330,3 +330,25 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
 - Still open from the previous entry: sddm never starts in the QEMU test box (the
   boot stops before `multi-user.target`) - needs a KMS-capable graphics stack or
   real hardware to judge.
+
+### 2026-11-17: first-boot onboarding creates the account
+
+- Requested: "users account create kre and proper waisa he flow onboarding wagera ho ok".
+- New `desktop/oobe/oobe.py`: console wizard on tty1 that creates the machine's
+  first account (name, account name, password twice, time zone), validates it,
+  runs `useradd` with `wheel,audio,video,render,input,netdev`, sets the password
+  with `chpasswd`, applies the time zone, writes SDDM `state.conf` so the login box
+  opens on the new name, and stamps `/etc/zaod/oobe-done`.
+- New `desktop/systemd/zaod-oobe.service`: enabled in the rootfs build, skipped when
+  `/etc/zaod/oobe-done` exists, ordered before `display-manager.service` and
+  conflicting with `getty@tty1` so the two never fight over the console.
+- `desktop/scripts/apply-desktop.sh` installs the wizard to `/usr/lib/zaod/oobe.py`
+  and the unit, and creates `/etc/zaod`.
+- `tests/test_oobe.py`: 10 tests over the pure rules (reserved names, taken names,
+  password rules, `useradd` argv, time-zone matching, remembered login, `--check`).
+  `--dry-run` prints the command it would run so the flow is reviewable anywhere.
+- Live media run the wizard on every boot (the account lives in the tmpfs layer);
+  the wizard says so and lets the person skip to the demo account `zaodlive` / `zaod`.
+- Docs: new `docs/onboarding.md`, README phase-10 row updated.
+- Still open: nothing here is verified on hardware. The QEMU box reaches `zaod login:`
+  but never `multi-user.target`, so neither the wizard nor SDDM has been seen running.

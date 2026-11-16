@@ -21,7 +21,7 @@ acceptance item stays unverified.
 | 7 | `.zaod` format and package manager | done, `docs/reports/phase-7.md` |
 | 8 | Applications, Store and Control Center | built, `docs/reports/phase-8.md` |
 | 9 | Studio, templates and project builds | done, `docs/reports/phase-9.md` |
-| 10 | Installer, OOBE, updates, release | tooling done, image blocked, `docs/reports/phase-10.md` |
+| 10 | Installer, OOBE, updates, release | OOBE wizard done (`docs/onboarding.md`), installer tooling done, image blocked, `docs/reports/phase-10.md` |
 
 ## Repository layout
 

@@ -99,4 +99,12 @@ install_file "$DESKTOP_DIR/systemd/journald-live.conf" \
 install_file "$DESKTOP_DIR/tools/lite_mode.py" \
   "$TARGET_ROOT/usr/lib/zaod/lite_mode.py" 0755
 
+# First-boot onboarding: the wizard, its unit and the directory it marks done.
+install_file "$DESKTOP_DIR/oobe/oobe.py" "$TARGET_ROOT/usr/lib/zaod/oobe.py" 0755
+install_file "$DESKTOP_DIR/systemd/zaod-oobe.service" \
+  "$TARGET_ROOT/etc/systemd/system/zaod-oobe.service" 0644
+if [[ $DRY_RUN -eq 0 ]]; then
+  install -d -m 0755 "$TARGET_ROOT/etc/zaod"
+fi
+
 printf 'apply-desktop: done\n'

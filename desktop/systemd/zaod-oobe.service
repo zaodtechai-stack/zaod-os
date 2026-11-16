@@ -1,0 +1,33 @@
+# First-boot onboarding: creates the machine's first account before anyone is
+# asked to sign in.
+#
+# Ordering matters. The wizard owns tty1 for as long as it runs, so it has to
+# start after the getty that would otherwise own that console and stop before
+# the display manager paints over it. Once /etc/zaod/oobe-done exists the unit is
+# skipped without running python at all, so a normal boot pays nothing for it.
+[Unit]
+Description=Zaod OS first-boot onboarding
+Documentation=man:zaod(1)
+ConditionPathExists=!/etc/zaod/oobe-done
+After=local-fs.target systemd-user-sessions.service getty@tty1.service
+Before=display-manager.service
+Conflicts=getty@tty1.service
+Wants=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+# The wizard talks to the person in front of the machine, so it must never be
+# killed by the boot timeout or restarted into a half-written account.
+TimeoutStartSec=0
+Restart=no
+ExecStart=/usr/bin/python3 /usr/lib/zaod/oobe.py
+
+[Install]
+WantedBy=multi-user.target
