@@ -64,6 +64,9 @@ make olddefconfig >/dev/null
 ./scripts/config --enable CONFIG_USB_XHCI_HCD
 ./scripts/config --enable CONFIG_USB_EHCI_HCD
 ./scripts/config --module CONFIG_USB_STORAGE
+# A USB 3 enclosure or stick that only speaks UAS would otherwise be dead on
+# the live medium; with UAS built in every mass-storage bridge is covered.
+./scripts/config --enable CONFIG_USB_UAS
 ./scripts/config --enable CONFIG_USB_HID
 ./scripts/config --enable CONFIG_EXT4_FS
 ./scripts/config --enable CONFIG_VFAT_FS
@@ -177,6 +180,23 @@ KERNEL_RELEASE="$(make -s kernelrelease)"
 rm -rf "$OUT_DIR/modules-root"
 mkdir -p "$OUT_DIR/modules-root"
 make modules_install INSTALL_MOD_PATH="$OUT_DIR/modules-root" INSTALL_MOD_STRIP=1 >/dev/null
+
+# `make modules_install` runs depmod, but a host without kmod (or a depmod
+# that refuses a newer module format) leaves an archive with no modules.dep,
+# and the initramfs builder cannot resolve a single driver without it. Run it
+# here and refuse to hand over an archive the next stage cannot use.
+MODULES_DIR="$OUT_DIR/modules-root/lib/modules/$KERNEL_RELEASE"
+if [[ ! -s "$MODULES_DIR/modules.dep" ]]; then
+  printf 'modules.dep is absent after modules_install; running depmod for %s\n' "$KERNEL_RELEASE"
+  if ! depmod -b "$OUT_DIR/modules-root" "$KERNEL_RELEASE"; then
+    printf 'depmod failed for %s; the modules archive would be unusable\n' "$KERNEL_RELEASE" >&2
+    exit 1
+  fi
+fi
+[[ -s "$MODULES_DIR/modules.dep" ]] || {
+  printf 'modules.dep is still missing from %s\n' "$MODULES_DIR" >&2
+  exit 1
+}
 
 find "$OUT_DIR/modules-root/lib/modules/$KERNEL_RELEASE" -type f -name '*.ko*' -printf '%P\n' \
   | sort > "$OUT_DIR/modules.list"

@@ -84,8 +84,13 @@ jobs:
               exit 1
             }
           done
-          release="$(tar -tzf build/out/kernel/modules.tar.gz \
-            | sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' | LC_ALL=C sort -u | head -n 1)"
+          # List the archive into a file instead of piping it into head/grep -q:
+          # those exit on their first match, tar then dies of SIGPIPE, and with
+          # `pipefail` that broken pipe was reported as a missing modules.dep.
+          listing="$(mktemp)"
+          tar -tzf build/out/kernel/modules.tar.gz > "$listing"
+          release="$(sed -n 's#^\./lib/modules/\([^/]*\)/.*#\1#p' "$listing" \
+            | LC_ALL=C sort -u | sed -n 1p)"
           printf 'kernel release: %s\n' "$release"
           case "$release" in
             6.18.*-zaod) ;;
@@ -96,8 +101,14 @@ jobs:
           esac
           cmp -s build/out/kernel/config kernel/zaod_defconfig \
             || echo "note: the built config differs from kernel/zaod_defconfig (build.sh normalises it)"
-          tar -tzf build/out/kernel/modules.tar.gz | grep -qx "./lib/modules/$release/modules.dep" \
-            || { echo "modules.dep is missing from the modules archive" >&2; exit 1; }
+          grep -Fxq "./lib/modules/$release/modules.dep" "$listing" || {
+            echo "modules.dep is missing from the modules archive" >&2
+            grep -m 5 './lib/modules/.*/modules\.' "$listing" || true
+            exit 1
+          }
+          modules="$(grep -c '^./lib/modules/.*\.ko$' "$listing" || true)"
+          printf 'modules in the archive: %s\n' "$modules"
+          test "$modules" -gt 0 || { echo "the modules archive carries no .ko files" >&2; exit 1; }
           sha256sum build/out/kernel/vmlinuz build/out/kernel/modules.tar.gz
 
       - name: Upload the kernel for the image job

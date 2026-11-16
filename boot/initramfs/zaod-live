@@ -6,8 +6,10 @@
 # 3. loop-mount the squashfs read-only and stack a tmpfs write layer on top
 # 4. switch_root into the live system
 #
-# Every failure path drops to a rescue shell with a message on the console
-# instead of hanging, and nothing is ever written to the boot media.
+# Every failure path drops to a rescue shell that is reopened forever, so PID 1
+# can never exit. An exiting PID 1 is a kernel panic ("Attempted to kill init")
+# that tells the person in front of the machine nothing at all, and that is the
+# failure this script must never produce again.
 
 set -eu
 
@@ -32,26 +34,55 @@ say() {
   printf '%s\n' "$message"
   # A serial-only machine has no /dev/tty0; that must never fail the boot.
   if [ -c "$SCREEN" ]; then
-    printf '%s\n' "$message" > "$SCREEN" 2>/dev/null
+    printf '%s\n' "$message" > "$SCREEN" 2>/dev/null || true
   fi
   return 0
 }
+
+screen_write() {
+  [ -c "$SCREEN" ] || return 0
+  printf '%s\n' "$*" > "$SCREEN" 2>/dev/null || true
+  return 0
+}
+
+# Never returns. The shell is reopened instead of exec'd, so a shell that exits
+# immediately (an unreadable console, a stray EOF) cannot take PID 1 with it.
+rescue() {
+  attempts=0
+  while :; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -eq 1 ]; then
+      printf 'Dropping to a rescue shell. Nothing was written to the boot media.\n'
+      screen_write 'Dropping to a rescue shell. Nothing was written to the boot media.'
+      screen_write 'Type "exit" to reopen this shell; the machine stays alive either way.'
+    else
+      printf '[zaod] rescue shell closed; reopening it (PID 1 must not exit)\n'
+      screen_write '[zaod] rescue shell closed; reopening it. Press Enter.'
+      sleep 1
+    fi
+    # Opened for writing on stdin as well: reading a VT that is nobody's
+    # controlling terminal can fail, and a shell with a dead stdin exits.
+    if [ -c "$SCREEN" ]; then
+      /bin/sh < "$SCREEN" > "$SCREEN" 2>&1 || true
+    else
+      /bin/sh || true
+    fi
+  done
+}
+
 fail() {
   message="$(printf '\033[1;31m[zaod] %s\033[0m' "$*")"
   printf '%s\n' "$message" >&2
   for device in "$SCREEN" /dev/console; do
     [ -w "$device" ] || continue
-    printf '%s\n' "$message" > "$device" 2>/dev/null
-    printf 'Dropping to a rescue shell. The boot media was not modified.\n' > "$device" 2>/dev/null
+    printf '%s\n' "$message" > "$device" 2>/dev/null || true
   done
   trap - EXIT
-  # Take the shell to a console that actually has a keyboard behind it.
-  if [ -c "$SCREEN" ]; then
-    exec /bin/sh <"$SCREEN" >"$SCREEN" 2>&1
-  fi
-  exec /bin/sh
+  rescue
 }
 
+# A signal sent to PID 1 must not end the boot either.
+trap 'say "received a termination signal; staying alive"' INT TERM HUP QUIT
 # PID 1 exiting is a kernel panic that explains nothing. Any error that slips
 # past a check lands here instead, with the line number.
 trap 'fail "unexpected failure while booting (line $LINENO)"' EXIT
@@ -103,6 +134,23 @@ mkdir -p "$OVERLAY_ROOT/upper" "$OVERLAY_ROOT/work"
 MEDIA_MOUNT="/run/zaod/media"
 mkdir -p "$MEDIA_MOUNT"
 
+# An ISO9660 volume has its primary volume descriptor at byte 32768, and the
+# identifier 'CD001' sits at 32769. Reading five bytes there identifies a disc
+# without mounting every disk in the machine, so an encrypted or journalled
+# filesystem is never touched just because it happened to be attached. A hybrid
+# image also exposes the same volume one partition further in (this build uses a
+# 16-sector partition offset, 8192 bytes), so both places are checked.
+has_iso_marker() {
+  device="$1"
+  [ -b "$device" ] || return 1
+  for skip in 32769 40961; do
+    if dd if="$device" bs=1 skip="$skip" count=5 2>/dev/null | grep -q CD001; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # A device is the boot media when it mounts read-only and carries the image at
 # the expected path. The volume label is a hint, not a requirement: the busybox
 # blkid in this image cannot read an iso9660 label, so trusting it alone meant a
@@ -111,7 +159,7 @@ mkdir -p "$MEDIA_MOUNT"
 try_media() {
   device="$1"
   [ -n "$device" ] || return 1
-  [ -e "$device" ] || return 1
+  [ -b "$device" ] || return 1
   if mount -t iso9660 -o ro "$device" "$MEDIA_MOUNT" 2>/dev/null \
      || mount -t vfat -o ro "$device" "$MEDIA_MOUNT" 2>/dev/null \
      || mount -t auto -o ro "$device" "$MEDIA_MOUNT" 2>/dev/null; then
@@ -123,27 +171,127 @@ try_media() {
   return 1
 }
 
-media_candidates() {
-  printf '%s\n' "/dev/disk/by-label/$LABEL"
-  for device in /dev/sr0 /dev/sr1 /dev/sda /dev/sdb /dev/vda /dev/vdb /dev/nvme0n1; do
-    printf '%s\n' "$device"
+# Every block device the kernel registered, taken from sysfs rather than a
+# hardcoded list: a stick behind a hub, an SD card, an NVMe enclosure or a card
+# reader all show up under a name this script never had to guess.
+partitions_of() {
+  for partition in /sys/class/block/"$1"/"$1"* /sys/class/block/"$1"/"${1}p"*; do
+    [ -e "$partition" ] || continue
+    printf '/dev/%s\n' "${partition##*/}"
   done
-  for device in /dev/sd? /dev/vd? /dev/sr? /dev/sd?* /dev/vd?* /dev/nvme?n?*; do
-    [ -e "$device" ] && printf '%s\n' "$device"
+}
+
+removable_devices() {
+  for sysdev in /sys/class/block/*; do
+    [ -e "$sysdev" ] || continue
+    name="${sysdev##*/}"
+    case "$name" in
+      loop* | ram* | zram* | dm-* | md*) continue ;;
+    esac
+    case "$(cat "/sys/class/block/$name/removable" 2>/dev/null || echo 0)" in
+      1)
+        printf '/dev/%s\n' "$name"
+        partitions_of "$name"
+        ;;
+    esac
   done
+}
+
+optical_devices() {
+  for sysdev in /sys/class/block/*; do
+    [ -e "$sysdev" ] || continue
+    name="${sysdev##*/}"
+    case "$name" in
+      sr*) printf '/dev/%s\n' "$name" ;;
+    esac
+  done
+}
+
+other_devices() {
+  for sysdev in /sys/class/block/*; do
+    [ -e "$sysdev" ] || continue
+    name="${sysdev##*/}"
+    case "$name" in
+      loop* | ram* | zram* | dm-* | md* | sr*) continue ;;
+    esac
+    printf '/dev/%s\n' "$name"
+    partitions_of "$name"
+  done
+}
+
+append_unique() {
+  # $1 list, $2 device -> prints the list with the device appended once
+  case " $1 " in
+    *" $2 "*) printf '%s' "$1" ;;
+    *) printf '%s %s' "$1" "$2" ;;
+  esac
+}
+
+REMOVABLE_CANDIDATES=""
+OTHER_CANDIDATES=""
+scan_devices() {
+  REMOVABLE_CANDIDATES=""
+  OTHER_CANDIDATES=""
+  for device in /dev/disk/by-label/"$LABEL" $(removable_devices) $(optical_devices); do
+    [ -b "$device" ] || continue
+    REMOVABLE_CANDIDATES="$(append_unique "$REMOVABLE_CANDIDATES" "$device")"
+  done
+  for device in $(other_devices); do
+    [ -b "$device" ] || continue
+    case " $REMOVABLE_CANDIDATES " in
+      *" $device "*) continue ;;
+    esac
+    OTHER_CANDIDATES="$(append_unique "$OTHER_CANDIDATES" "$device")"
+  done
+}
+
+# What the machine actually has, printed when nothing matched. Without this the
+# screen shows a row of identical "waiting" lines and no way to tell a missing
+# kernel driver from an empty card reader.
+dump_media_state() {
+  say "kernel: $(uname -r)"
+  say "block devices registered: $(ls /sys/class/block 2>/dev/null | tr '\n' ' ')"
+  if [ -r /proc/partitions ]; then
+    say "partitions: $(awk 'NR>2 {printf "%s ", $4}' /proc/partitions)"
+  fi
+  say "last usb/scsi/ata lines from the kernel log:"
+  dmesg 2>/dev/null | grep -iE 'usb|scsi|ata[0-9]|sd [0-9]|sr [0-9]|xhci|mmc' \
+    | tail -n 12 | while IFS= read -r line; do say "  $line"; done
+  return 0
 }
 
 wait_for_media() {
   attempt=0
-  while [ "$attempt" -lt 30 ]; do
-    for candidate in $(media_candidates); do
+  while [ "$attempt" -lt 45 ]; do
+    scan_devices
+    # Fast pass: every device carrying an ISO9660 volume descriptor.
+    for candidate in $REMOVABLE_CANDIDATES $OTHER_CANDIDATES; do
+      has_iso_marker "$candidate" || continue
+      if try_media "$candidate"; then
+        MEDIA="$candidate"
+        return 0
+      fi
+    done
+    # Slow pass: a mount test on the likely devices that showed no marker, which
+    # covers a FAT-formatted stick or a layout the marker check does not know.
+    for candidate in $REMOVABLE_CANDIDATES; do
       if try_media "$candidate"; then
         MEDIA="$candidate"
         return 0
       fi
     done
     attempt=$((attempt + 1))
-    say "waiting for the $LABEL media ($attempt/30)"
+    if [ "$attempt" -eq 1 ]; then
+      say "waiting for the $LABEL media (up to 45 s)"
+    fi
+    # A device that appears late - a hub powering up, a controller that needs a
+    # rescan - is exactly what the retry window is for.
+    if [ "$attempt" -eq 10 ] || [ "$attempt" -eq 25 ]; then
+      [ -w /sys/bus/pci/rescan ] && echo 1 > /sys/bus/pci/rescan 2>/dev/null || true
+      for module in usb-storage sd_mod sr_mod xhci-hcd xhci-pci ehci-hcd ahci; do
+        modprobe "$module" 2>/dev/null || true
+      done
+    fi
     sleep 1
   done
   return 1
@@ -152,8 +300,10 @@ wait_for_media() {
 if [ -n "$MEDIA" ]; then
   try_media "$MEDIA" || fail "cannot mount $MEDIA read-only or it has no $SQUASH_DIR/$SQUASHFS"
 else
-  wait_for_media || fail "cannot find the $LABEL media (block devices: $(find /dev -maxdepth 1 \
-    \( -name 'sd?' -o -name 'vd?' -o -name 'sr?' -o -name 'nvme?n?' \) 2>/dev/null | tr '\n' ' '))"
+  wait_for_media || {
+    dump_media_state
+    fail "cannot find the $LABEL boot media"
+  }
 fi
 
 say "using boot media $MEDIA"
@@ -209,5 +359,5 @@ if [ "$SAFEGFX" -eq 1 ]; then
 fi
 
 [ -x "$NEW_ROOT/sbin/init" ] || fail "the live image has no executable /sbin/init"
-say "handing over to the live system"
+say "kernel $(uname -r), handing over to the live system"
 exec switch_root "$NEW_ROOT" /sbin/init

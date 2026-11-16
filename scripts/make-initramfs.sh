@@ -87,6 +87,9 @@ REQUIRED_CONFIG=(
 [[ -s "$KERNEL_CONFIG" ]] || fail "the kernel config is missing: $KERNEL_CONFIG"
 [[ -x "$BUSYBOX" ]] || fail "busybox is required (install the busybox-static package)"
 [[ -f boot/initramfs/zaod-live ]] || fail "boot/initramfs/zaod-live is missing"
+# The live init is PID 1. A syntax error there is a boot that panics instead of
+# telling anyone why, so it is caught here and not on someone's laptop.
+sh -n boot/initramfs/zaod-live || fail "boot/initramfs/zaod-live has a shell syntax error"
 for tool in zstd xz gzip; do
   command -v "$tool" >/dev/null || fail "missing build tool: $tool (needed to uncompress the modules)"
 done
@@ -210,7 +213,7 @@ symbol_for_stem() {
     ehci-hcd) printf 'CONFIG_USB_EHCI_HCD\n' ;;
     ehci-pci) printf 'CONFIG_USB_EHCI_PCI\n' ;;
     ohci-hcd) printf 'CONFIG_USB_OHCI_HCD\n' ;;
-    ohci-pci) printf 'CONFIG_USB_OHCI_PCI\n' ;;
+    ohci-pci) printf 'CONFIG_USB_OHCI_HCD_PCI\n' ;;
     uhci-hcd) printf 'CONFIG_USB_UHCI_HCD\n' ;;
     usbhid) printf 'CONFIG_USB_HID\n' ;;
     hid-generic) printf 'CONFIG_HID_GENERIC\n' ;;

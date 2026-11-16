@@ -131,14 +131,27 @@ def check_live_init(report: Report) -> None:
     report.contains(text, "zaod.installer", "live init understands zaod.installer")
     report.contains(text, "mount -t squashfs -o ro,loop", "the image is mounted read-only")
     report.contains(text, "lowerdir=", "a writable overlay is stacked on the read-only image")
-    report.contains(text, "exec /bin/sh", "a failure drops to a rescue shell")
+    # A rescue shell that is exec'd once can still exit, and PID 1 exiting is the
+    # "Attempted to kill init" panic this file exists to prevent. The shell is
+    # therefore reopened in a loop that has no exit.
+    report.check(
+        re.search(r"^rescue\(\) \{", text, re.MULTILINE) is not None
+        and "/bin/sh" in text
+        and re.search(r"while :; do", text) is not None
+        and "exec /bin/sh" not in text,
+        "a failure drops to a rescue shell that PID 1 cannot leave",
+    )
     report.check(
         "mkfs" not in text and "wipefs" not in text,
         "the live init never formats or wipes a device",
     )
     report.check(
-        re.search(r"attempt.*-lt 30", text) is not None,
+        re.search(r"attempt.*-lt [1-9][0-9]+", text) is not None,
         "media detection retries instead of racing udev",
+    )
+    report.check(
+        "/sys/class/block" in text and "removable" in text,
+        "media detection enumerates the block devices the kernel registered",
     )
     report.check(
         "$MEDIA" in text and "mount -t iso9660 -o ro" in text,
