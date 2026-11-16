@@ -57,12 +57,17 @@ BOOT_MODULES=(
   ahci
   virtio_blk
   usb-storage
+  uas
   xhci-hcd
+  xhci-pci
   ehci-hcd
+  ehci-pci
   ohci-hcd
+  ohci-pci
   uhci-hcd
   usbhid
   hid-generic
+  virtio_pci
 )
 
 # Config options that must be at least modular, so a kernel that moved one of

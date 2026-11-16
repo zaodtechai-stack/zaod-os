@@ -89,3 +89,25 @@ sudo scripts/write-usb.sh /dev/sdX zaod-os-0.4.0-x86_64.iso
 Acceptance for a release candidate: boots to SDDM at 1366x768 with 2 GB RAM, the Zaod session
 starts Plasma 6, the 13 application packages launch, and `zaod-lite-mode.service` is active.
 Until a build has been booted, the image is untested and must not be published as final.
+
+## USB boot: the initramfs carried no USB host-controller glue
+
+A stick written with release `iso-13` reached our own init and then died with
+`Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000100` on a
+Chromebook. Reproduced in QEMU by attaching the same image as a USB mass-storage
+device: the live init found no media, printed `waiting for the ZAODOS media
+(30/30)` and only `/dev/sr0` existed - no `/dev/sda` at all.
+
+Two defects, both invisible from a CD boot:
+
+- The kernel is Debian's, where `CONFIG_USB_XHCI_PCI` is a module. The initramfs
+  carried `xhci-hcd`/`ehci-hcd`/`ohci-hcd` (the shared cores) but not
+  `xhci-pci`/`ehci-pci`/`ohci-pci` (the PCI glue), so no controller ever bound
+  and `usb-storage` had nothing to drive. `BOOT_MODULES` now carries them plus
+  `uas` and `virtio_pci`.
+- `console=tty0 console=ttyS0,115200` makes `/dev/console` ttyS0. On a machine
+  with no serial port every message the init printed went to a dead port, so the
+  failure was invisible; `fail()` then exec'd a shell on that dead console, the
+  shell hit EOF and exited, and PID 1 dying is what produced the panic. The init
+  now mirrors its messages and the rescue shell to `/dev/tty0`, and an EXIT trap
+  reports an unexpected failure with its line number instead of panicking.
