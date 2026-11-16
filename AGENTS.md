@@ -312,3 +312,21 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   so the block is inside the boot transaction (plymouth-quit-wait has not returned
   in every captured run). That is a Phase 5 desktop issue, separate from the
   password fix, and needs a machine with a KMS driver to rule out the emulated GPU.
+
+### 2026-11-17: live media sign in like the installed system
+
+- Requested: "live account me bhi waisa hi flow add kar jaisa pure mode me hai".
+- `desktop/sddm/sddm.conf.d/zaod-live.conf` no longer carries `[Autologin]`, so
+  live media present the Zaod login screen exactly like an installed system. The
+  live account is the real account from the previous entry, `zaodlive` / `zaod`.
+- `desktop/sddm/themes/zaod/Main.qml` gained an editable user name field. It used
+  to print `userModel.lastUser || "zaodlive"` as a *label* and call
+  `sddm.login(userModel.lastUser, ...)`, so on a fresh live boot - where there is
+  no last user - the box said "zaodlive" and the login call carried an empty user
+  name. Both modes could not sign in on their first boot. `login()` now reads the
+  field, refuses an empty name, and the password box keeps focus when a name is
+  already filled in.
+- `tests/check_desktop_config.py`: 2114 checks, 0 failed.
+- Still open from the previous entry: sddm never starts in the QEMU test box (the
+  boot stops before `multi-user.target`) - needs a KMS-capable graphics stack or
+  real hardware to judge.

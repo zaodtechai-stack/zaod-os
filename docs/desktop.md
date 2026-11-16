@@ -74,16 +74,20 @@ desktop/scripts/lite-mode.sh --force-full      # override the measurement
 
 ## Live media versus installed system
 
-* Live images use `sddm.conf.d/zaod-live.conf`, which autologins `zaodlive`. The
-  installer removes that file and the account; the installed system never ships a
-  live account.
-* The live credentials are `zaodlive` / `zaod`. The session logs in by itself, so
-  nothing has to be typed on the normal path, but the account is a real account:
-  the text console accepts it, `sudo` works, and `/etc/issue` repeats both values
-  above every `zaod login:` prompt. Earlier images (iso-16 .. iso-24) locked this
-  account, so anyone whose graphical session did not start had no way in.
+* Live media sign in with the same flow as the installed system: the Zaod login
+  screen asks for the account and the password, and there is no autologin on
+  either. `sddm.conf.d/zaod-live.conf` only carries live-only display settings;
+  the installer removes the file and the `zaodlive` account, so the installed
+  system never ships a live account.
+* The live credentials are `zaodlive` / `zaod`. The text console accepts the same
+  pair, `sudo` works because the account is in `wheel`, and `/etc/issue` repeats
+  both values above every login prompt. Earlier images (iso-16 .. iso-24) locked
+  this account and relied on autologin, so anyone whose session did not start had
+  no way in and nothing on screen said what to type.
 * `zaod login:` is the machine name (the hostname), not a user name. Log in as
   `zaodlive`, not `zaod`.
+* If the graphical session does not come up, log in on the text console and run
+  `sudo systemctl start sddm`.
 * Journald runs with `Storage=volatile` (`journald-live.conf`) so live sessions
   never write logs to the read-only squashfs.
 * `vm.swappiness=100` with `vm.page-cluster=0` matches the zram-only swap policy

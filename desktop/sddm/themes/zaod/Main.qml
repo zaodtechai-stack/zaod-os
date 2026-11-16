@@ -55,10 +55,21 @@ Rectangle {
                 anchors.margins: rounded(24)
                 spacing: rounded(16)
 
-                Text {
+                // The account name is a field, not a label. Live media now asks
+                // for a login like the installed system does, and on a fresh
+                // live boot there is no "last user" to fall back on, so a label
+                // reading "zaodlive" next to a password box could never sign in:
+                // the login call had an empty user name.
+                TextField {
+                    id: userField
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("User name")
                     text: userModel.lastUser || "zaodlive"
                     color: root.surfaceText
-                    font { family: "Inter"; pixelSize: 20 }
+                    font { family: "Inter"; pixelSize: 16 }
+                    selectByMouse: true
+                    onAccepted: passwordField.forceActiveFocus()
+                    KeyNavigation.tab: passwordField
                 }
 
                 TextField {
@@ -70,6 +81,7 @@ Rectangle {
                     focus: true
                     selectByMouse: true
                     onAccepted: root.login()
+                    KeyNavigation.backtab: userField
                     KeyNavigation.tab: sessionButton
                 }
 
@@ -158,8 +170,20 @@ Rectangle {
     }
 
     function login() {
-        sddm.login(userModel.lastUser, passwordField.text, root.sessionIndex)
+        var user = userField.text.trim()
+        if (user.length === 0) {
+            errorLabel.text = qsTr("Enter the user name.")
+            userField.forceActiveFocus()
+            return
+        }
+        sddm.login(user, passwordField.text, root.sessionIndex)
     }
 
-    Component.onCompleted: passwordField.forceActiveFocus()
+    Component.onCompleted: {
+        if (userField.text.length > 0) {
+            passwordField.forceActiveFocus()
+        } else {
+            userField.forceActiveFocus()
+        }
+    }
 }
