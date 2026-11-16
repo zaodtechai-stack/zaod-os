@@ -49,6 +49,7 @@ wpasupplicant
 bluez
 bluez-firmware
 iw
+wireless-regdb
 iproute2
 iputils-ping
 netbase
