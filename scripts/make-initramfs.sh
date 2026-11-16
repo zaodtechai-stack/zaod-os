@@ -87,8 +87,10 @@ REQUIRED_CONFIG=(
 [[ -s "$KERNEL_CONFIG" ]] || fail "the kernel config is missing: $KERNEL_CONFIG"
 [[ -x "$BUSYBOX" ]] || fail "busybox is required (install the busybox-static package)"
 [[ -f boot/initramfs/zaod-live ]] || fail "boot/initramfs/zaod-live is missing"
-# The live init is PID 1. A syntax error there is a boot that panics instead of
-# telling anyone why, so it is caught here and not on someone's laptop.
+# /init is PID 1 and /init-boot is the boot logic it supervises. A syntax error
+# in either is a boot that panics on someone's laptop instead of telling them
+# why, so both are parsed here.
+sh -n boot/initramfs/init || fail "boot/initramfs/init has a shell syntax error"
 sh -n boot/initramfs/zaod-live || fail "boot/initramfs/zaod-live has a shell syntax error"
 for tool in zstd xz gzip; do
   command -v "$tool" >/dev/null || fail "missing build tool: $tool (needed to uncompress the modules)"
@@ -362,7 +364,10 @@ done
 ln -sf ../bin/busybox "$STAGE/sbin/modprobe"
 ln -sf ../bin/busybox "$STAGE/sbin/insmod"
 
-install -m 0755 boot/initramfs/zaod-live "$STAGE/init"
+# Two files, one rule: /init is PID 1 and never exits; /init-boot is the boot
+# logic it runs as a child, so a failure inside it cannot panic the machine.
+install -m 0755 boot/initramfs/init "$STAGE/init"
+install -m 0755 boot/initramfs/zaod-live "$STAGE/init-boot"
 printf 'ZAODOS live initramfs, kernel %s\n' "$KERNEL_VERSION" > "$STAGE/etc/zaod-initramfs"
 
 mkdir -p "$(dirname "$OUT")"

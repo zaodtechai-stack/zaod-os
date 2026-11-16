@@ -1,0 +1,120 @@
+#!/bin/sh
+# Zaod live-boot PID 1.
+#
+# This script is the only process that may ever be PID 1 in the initramfs, and
+# its one rule is that it never exits. Everything that can fail - loading the
+# media drivers, finding the disc, mounting squashfs, stacking the overlay,
+# checking /sbin/init - lives in /init-boot, which runs as a child of this
+# script.
+#
+# The reason is the panic users reported on real hardware:
+#
+#   Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000100
+#   PID: 1 Comm: init Not tainted 6.18.63-zaod
+#
+# exitcode 0x100 is exit status 1. One unguarded command in the old single
+# script exited the shell, and a shell that exits as PID 1 is a panic that tells
+# the person in front of the machine nothing. A child that exits is a message on
+# the screen and a rescue shell; PID 1 cannot be reached by that failure any
+# more, whatever the boot logic does.
+#
+# The only way out of this script is the final exec of switch_root, and it is
+# taken only after the child has proved a live root is mounted.
+
+SCREEN="${SCREEN:-/dev/tty0}"
+NEW_ROOT="${NEW_ROOT:-/newroot}"
+INIT_BOOT="${INIT_BOOT:-/init-boot}"
+SWITCH_ROOT="${SWITCH_ROOT:-switch_root}"
+RESCUE_SHELL="${RESCUE_SHELL:-/bin/sh}"
+STATE_DIR="${STATE_DIR:-/run/zaod-init}"
+# Overridable so tests can run this script without touching the real /proc, /sys
+# and /dev of the machine that runs them.
+DEV_DIR="${DEV_DIR:-/dev}"
+PROC_DIR="${PROC_DIR:-/proc}"
+SYS_DIR="${SYS_DIR:-/sys}"
+READY="$STATE_DIR/boot-ready"
+
+# Messages go to the kernel console and to the machine's own screen: on a
+# laptop /dev/console is the last console= on the command line, which is the
+# serial port, so the screen copy is the one a user can actually read.
+say() {
+  message="$(printf '\033[1;36m[zaod]\033[0m %s' "$*")"
+  printf '%s\n' "$message"
+  screen_write "$message"
+  return 0
+}
+
+screen_write() {
+  [ -n "$SCREEN" ] || return 0
+  [ -c "$SCREEN" ] || return 0
+  printf '%s\n' "$*" > "$SCREEN" 2>/dev/null || true
+  return 0
+}
+
+# Never returns. The shell is reopened instead of exec'd, and a shell that exits
+# immediately (an unreadable console, a stray EOF) cannot take PID 1 with it.
+rescue() {
+  attempts=0
+  while :; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -eq 1 ]; then
+      printf 'Dropping to a rescue shell. Nothing was written to the boot media.\n'
+      screen_write 'Dropping to a rescue shell. Nothing was written to the boot media.'
+      screen_write 'Type "exit" to reopen this shell; the machine stays alive either way.'
+      screen_write 'Useful commands: /init-boot (retry), cat /proc/partitions, ls /sys/class/block'
+    else
+      printf '[zaod] rescue shell closed; reopening it (PID 1 must not exit)\n'
+      screen_write '[zaod] rescue shell closed; reopening it. Press Enter.'
+      sleep 1
+    fi
+    # Opened for writing on stdin as well: reading a VT that is nobody's
+    # controlling terminal can fail, and a shell with a dead stdin exits.
+    if [ -c "$SCREEN" ]; then
+      "$RESCUE_SHELL" < "$SCREEN" > "$SCREEN" 2>&1 || true
+    else
+      "$RESCUE_SHELL" || true
+    fi
+  done
+}
+
+# Signals to PID 1 must not end the boot either.
+trap 'say "received a termination signal; staying alive"' INT TERM HUP QUIT
+
+# A trap installed at the top means no exit path from this script - including
+# one this script's own logic could not foresee - reaches the kernel as a panic.
+trap 'printf "[zaod] PID 1 was asked to exit; reopening the rescue shell instead\n" >&2; rescue' EXIT
+
+# The pseudo filesystems every later step needs. Mounted here, before the child
+# runs, so a child that dies never leaves /dev or /proc half done.
+mount -t devtmpfs -o mode=0755 devtmpfs "$DEV_DIR" 2>/dev/null || true
+mkdir -p "$STATE_DIR" 2>/dev/null || true
+mount -t tmpfs -o mode=0755 tmpfs "$STATE_DIR" 2>/dev/null || true
+mount -t proc proc "$PROC_DIR" 2>/dev/null || true
+mount -t sysfs sysfs "$SYS_DIR" 2>/dev/null || true
+mkdir -p "$NEW_ROOT" 2>/dev/null || true
+rm -f "$READY" 2>/dev/null || true
+
+say "starting the boot logic ($INIT_BOOT)"
+# Run the boot logic as a child. Its exit status is reported, never inherited:
+# this shell keeps running whatever happens inside it.
+"$INIT_BOOT"
+boot_status=$?
+say "the boot logic returned with status $boot_status"
+
+if [ "$boot_status" -eq 0 ] && [ -f "$READY" ]; then
+  if [ -x "$NEW_ROOT/sbin/init" ]; then
+    say "kernel $(uname -r), handing over to the live system"
+    # shellcheck disable=SC2093  # intentional: these lines run only if exec fails
+    exec "$SWITCH_ROOT" "$NEW_ROOT" /sbin/init
+    # exec only returns if it could not start switch_root at all.
+    say "switch_root could not be started"
+  else
+    say "the live root at $NEW_ROOT has no executable /sbin/init"
+  fi
+else
+  say "the boot logic did not finish mounting a live root (status $boot_status)"
+  screen_write 'Run /init-boot from this shell to try the boot again.'
+fi
+
+trap - EXIT
+rescue

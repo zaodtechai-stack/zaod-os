@@ -27,6 +27,9 @@ python3 tests/check_rootfs_config.py
 
 printf '\n== boot chain configuration ==\n'
 python3 tests/check_boot_config.py
+# The live initramfs must never be able to panic the machine through its own
+# logic: /init is a supervisor, the boot logic is its child.
+python3 tests/test_pid1_supervisor.py
 
 printf '\n== desktop session configuration ==\n'
 python3 tests/check_desktop_config.py

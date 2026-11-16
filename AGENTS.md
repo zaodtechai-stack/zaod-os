@@ -270,3 +270,24 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   an image built before `46b4c93`: a distribution kernel plus the init that could still exit.
   `iso-21` and later carry 6.18.63-zaod and a PID 1 that reopens its rescue shell instead of
   exiting, so that panic cannot recur.
+
+### 2026-11-17: PID 1 is now a supervisor, because the panic was self-inflicted
+
+- The panic reported on real hardware against the new image was
+  `Attempted to kill init! exitcode=0x00000100`, `PID: 1 Comm: init`, kernel
+  `6.18.63-zaod` on `GOOGLE Enguarde` (a Chromebook). Exit status 0x100 is 1: the
+  boot script was PID 1, it enabled `set -e`, and one unguarded command ending the
+  shell ended the machine.
+- `boot/initramfs/init` is now a supervisor that never exits. It mounts the pseudo
+  filesystems, runs the boot logic as a child, reports the child's exit status, and
+  only `exec`s `switch_root` after the child has written `boot-ready` and
+  `/newroot/sbin/init` is executable. The boot logic itself moved to
+  `boot/initramfs/zaod-live` (installed as `/init-boot`), keeps per-step `STEP`
+  labels so a screen photo names the step that stopped the boot, and no longer uses
+  `set -e` anywhere.
+- Media detection reads one 2048-byte sector per ISO descriptor instead of
+  skipping 32769 bytes with `bs=1`, prints the candidate list on the first wait and
+  a heartbeat at attempt 5 and 20, and `zaod.media=` can name the stick explicitly.
+- `tests/test_pid1_supervisor.py` runs the supervisor with a failing child, a
+  SIGKILLed child and a ready child, and asserts `/init` and `/init-boot` carry no
+  `set -e`. It is wired into `scripts/ci-checks.sh`.
