@@ -170,11 +170,76 @@ for text in "${problems[@]}"; do
     [[ "$text" == *"module $stem "?* ]] && REPORTED["$stem"]=1
   done
 done
+
+# The config decides what "not in the archive" means. The Zaod kernel builds most
+# of the boot stack in (sd_mod, sr_mod, xhci-hcd, ... are =y there), so a boot
+# driver that is absent from $MODULES_ARCHIVE is normally already inside vmlinuz
+# and packing it is neither possible nor needed. Only a driver the config marks as
+# a module can really be missing, and a driver this kernel does not carry at all
+# is the product config's decision - the live init modprobes every one of them
+# with `|| true`, so it is reported, not fatal.
+declare -A OPTVAL=()
+while IFS= read -r line; do
+  case "$line" in
+    CONFIG_*=y | CONFIG_*=m) OPTVAL["${line%%=*}"]="${line##*=}" ;;
+  esac
+done < "$KERNEL_CONFIG"
+
+symbol_for_stem() {
+  case "$1" in
+    loop) printf 'CONFIG_BLK_DEV_LOOP\n' ;;
+    squashfs) printf 'CONFIG_SQUASHFS\n' ;;
+    overlay) printf 'CONFIG_OVERLAY_FS\n' ;;
+    isofs) printf 'CONFIG_ISO9660_FS\n' ;;
+    vfat) printf 'CONFIG_VFAT_FS\n' ;;
+    fat) printf 'CONFIG_FAT_FS\n' ;;
+    nls_cp437) printf 'CONFIG_NLS_CODEPAGE_437\n' ;;
+    nls_iso8859-1) printf 'CONFIG_NLS_ISO8859_1\n' ;;
+    nls_utf8) printf 'CONFIG_NLS_UTF8\n' ;;
+    sr_mod) printf 'CONFIG_BLK_DEV_SR\n' ;;
+    cdrom) printf 'CONFIG_CDROM\n' ;;
+    sd_mod) printf 'CONFIG_BLK_DEV_SD\n' ;;
+    libata) printf 'CONFIG_ATA\n' ;;
+    ata_piix) printf 'CONFIG_ATA_PIIX\n' ;;
+    ahci) printf 'CONFIG_SATA_AHCI\n' ;;
+    virtio_blk) printf 'CONFIG_VIRTIO_BLK\n' ;;
+    usb-storage) printf 'CONFIG_USB_STORAGE\n' ;;
+    uas) printf 'CONFIG_USB_UAS\n' ;;
+    xhci-hcd) printf 'CONFIG_USB_XHCI_HCD\n' ;;
+    xhci-pci) printf 'CONFIG_USB_XHCI_PCI\n' ;;
+    ehci-hcd) printf 'CONFIG_USB_EHCI_HCD\n' ;;
+    ehci-pci) printf 'CONFIG_USB_EHCI_PCI\n' ;;
+    ohci-hcd) printf 'CONFIG_USB_OHCI_HCD\n' ;;
+    ohci-pci) printf 'CONFIG_USB_OHCI_PCI\n' ;;
+    uhci-hcd) printf 'CONFIG_USB_UHCI_HCD\n' ;;
+    usbhid) printf 'CONFIG_USB_HID\n' ;;
+    hid-generic) printf 'CONFIG_HID_GENERIC\n' ;;
+    *) printf 'CONFIG_%s\n' "$(printf '%s' "$1" | tr '[:lower:]-' '[:upper:]_')" ;;
+  esac
+}
+
+built_in=()
+left_out=()
 for stem in "${BOOT_MODULES[@]}"; do
   [[ -n "${REPORTED[$stem]:-}" ]] && continue
-  [[ -n "${MEMBER[$stem]:-}" ]] \
-    || problems+=("the boot module $stem is not in $MODULES_ARCHIVE")
+  [[ -n "${MEMBER[$stem]:-}" ]] && continue
+  symbol="$(symbol_for_stem "$stem")"
+  case "${OPTVAL[$symbol]:-}" in
+    y) built_in+=("$stem") ;;
+    m)
+      problems+=("module $stem is $symbol=m in $KERNEL_CONFIG but missing from $MODULES_ARCHIVE")
+      ;;
+    *) left_out+=("$stem") ;;
+  esac
 done
+if (( ${#built_in[@]} )); then
+  printf 'make-initramfs: %d boot drivers are built into the kernel: %s\n' \
+    "${#built_in[@]}" "${built_in[*]}"
+fi
+if (( ${#left_out[@]} )); then
+  printf 'make-initramfs: note: this kernel has no support for %s; the live init skips it\n' \
+    "${left_out[*]}"
+fi
 
 # The live init mounts devtmpfs itself (boot/initramfs/zaod-live), so a kernel
 # that leaves CONFIG_DEVTMPFS_MOUNT unset, as Debian's does, is fine.
