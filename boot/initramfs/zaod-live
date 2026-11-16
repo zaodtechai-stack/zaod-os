@@ -41,8 +41,8 @@ mount -t sysfs sysfs /sys || fail "cannot mount sysfs"
 # into the rescue shell. A module that is built in, or simply absent, is not an
 # error here: the mount that needs it reports its own failure.
 for module in loop squashfs overlay isofs nls_cp437 nls_iso8859-1 nls_utf8 \
-              vfat fat sr_mod cdrom usb-storage xhci-hcd ehci-hcd ohci-hcd \
-              uhci-hcd usbhid hid-generic; do
+              vfat fat sr_mod cdrom sd_mod libata ata_piix ahci virtio_blk \
+              usb-storage xhci-hcd ehci-hcd ohci-hcd uhci-hcd usbhid hid-generic; do
   modprobe "$module" 2>/dev/null || true
 done
 
@@ -70,12 +70,44 @@ mount -t tmpfs -o mode=0755 tmpfs "$OVERLAY_ROOT" \
 mkdir -p "$OVERLAY_ROOT/upper" "$OVERLAY_ROOT/work"
 
 # --- locate the media -------------------------------------------------------
+MEDIA_MOUNT="/run/zaod/media"
+mkdir -p "$MEDIA_MOUNT"
+
+# A device is the boot media when it mounts read-only and carries the image at
+# the expected path. The volume label is a hint, not a requirement: the busybox
+# blkid in this image cannot read an iso9660 label, so trusting it alone meant a
+# correctly built disc never booted. Mounting and checking for the image is the
+# test that cannot give a false negative.
+try_media() {
+  device="$1"
+  [ -n "$device" ] || return 1
+  [ -e "$device" ] || return 1
+  if mount -t iso9660 -o ro "$device" "$MEDIA_MOUNT" 2>/dev/null \
+     || mount -t vfat -o ro "$device" "$MEDIA_MOUNT" 2>/dev/null \
+     || mount -t auto -o ro "$device" "$MEDIA_MOUNT" 2>/dev/null; then
+    if [ -f "$MEDIA_MOUNT$SQUASH_DIR/$SQUASHFS" ]; then
+      return 0
+    fi
+    umount "$MEDIA_MOUNT" 2>/dev/null || true
+  fi
+  return 1
+}
+
+media_candidates() {
+  printf '%s\n' "/dev/disk/by-label/$LABEL"
+  for device in /dev/sr0 /dev/sr1 /dev/sda /dev/sdb /dev/vda /dev/vdb /dev/nvme0n1; do
+    printf '%s\n' "$device"
+  done
+  for device in /dev/sd? /dev/vd? /dev/sr?; do
+    [ -e "$device" ] && printf '%s\n' "$device"
+  done
+}
+
 wait_for_media() {
   attempt=0
   while [ "$attempt" -lt 30 ]; do
-    for candidate in /dev/disk/by-label/"$LABEL" /dev/sr0 /dev/sda /dev/sdb; do
-      [ -e "$candidate" ] || continue
-      if blkid "$candidate" 2>/dev/null | grep -q "LABEL=\"$LABEL\""; then
+    for candidate in $(media_candidates); do
+      if try_media "$candidate"; then
         MEDIA="$candidate"
         return 0
       fi
@@ -87,14 +119,16 @@ wait_for_media() {
   return 1
 }
 
-[ -n "$MEDIA" ] || wait_for_media || fail "cannot find media labelled $LABEL"
+if [ -n "$MEDIA" ]; then
+  try_media "$MEDIA" || fail "cannot mount $MEDIA read-only or it has no $SQUASH_DIR/$SQUASHFS"
+else
+  wait_for_media || fail "cannot find the $LABEL media (block devices: $(find /dev -maxdepth 1 \
+    \( -name 'sd?' -o -name 'vd?' -o -name 'sr?' -o -name 'nvme?n?' \) 2>/dev/null | tr '\n' ' '))"
+fi
 
 say "using boot media $MEDIA"
-mkdir -p /run/zaod/media
-mount -t iso9660 -o ro "$MEDIA" /run/zaod/media || mount -t vfat -o ro "$MEDIA" /run/zaod/media \
-  || fail "cannot mount $MEDIA read-only"
 
-SQUASH_PATH="/run/zaod/media${SQUASH_DIR}/${SQUASHFS}"
+SQUASH_PATH="${MEDIA_MOUNT}${SQUASH_DIR}/${SQUASHFS}"
 [ -f "$SQUASH_PATH" ] || fail "missing $SQUASH_PATH on the boot media"
 say "squashfs: $SQUASH_PATH ($(du -h "$SQUASH_PATH" | cut -f1))"
 

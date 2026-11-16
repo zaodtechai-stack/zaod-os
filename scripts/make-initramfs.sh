@@ -51,6 +51,11 @@ BOOT_MODULES=(
   nls_utf8
   sr_mod
   cdrom
+  sd_mod
+  libata
+  ata_piix
+  ahci
+  virtio_blk
   usb-storage
   xhci-hcd
   ehci-hcd
@@ -78,6 +83,9 @@ REQUIRED_CONFIG=(
 [[ -s "$KERNEL_CONFIG" ]] || fail "the kernel config is missing: $KERNEL_CONFIG"
 [[ -x "$BUSYBOX" ]] || fail "busybox is required (install the busybox-static package)"
 [[ -f boot/initramfs/zaod-live ]] || fail "boot/initramfs/zaod-live is missing"
+for tool in zstd xz gzip; do
+  command -v "$tool" >/dev/null || fail "missing build tool: $tool (needed to uncompress the modules)"
+done
 
 # List the archive exactly once. Re-reading it for every driver was slow, and a
 # listing piped into `grep -q` or `head -n 1` lets those exit early, which kills
@@ -252,6 +260,23 @@ else
     tar -xzf "$MODULES_ARCHIVE" -C "$STAGE" "${METADATA[@]}"
   fi
 fi
+
+# Ship the modules uncompressed. Debian packages them as .ko.xz, and the
+# busybox modprobe in this image hands the file straight to the kernel, which
+# answered every compressed module with "Invalid ELF header magic: != ELF" and
+# loaded nothing at all. Plain .ko cannot fail that way.
+while IFS= read -r -d '' module_file; do
+  case "$module_file" in
+    *.zst) zstd -dq --rm -- "$module_file" ;;
+    *.xz) xz -d -- "$module_file" ;;
+    *.gz) gzip -d -- "$module_file" ;;
+  esac
+done < <(find "$STAGE/lib/modules" -type f \( -name '*.ko.zst' -o -name '*.ko.xz' -o -name '*.ko.gz' \) -print0)
+
+# modules.dep still names the compressed files, so rewrite it to match what is
+# actually in the image.
+find "$STAGE/lib/modules" -name 'modules.*' -type f -print0 \
+  | xargs -0 -r sed -i -e 's/\.ko\.\(zst\|xz\|gz\)/.ko/g'
 
 cp "$BUSYBOX" "$STAGE/bin/busybox"
 chmod 0755 "$STAGE/bin/busybox"

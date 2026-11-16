@@ -7,7 +7,7 @@ The ISO cannot be built inside the assistant sandbox: the container has no
 (`undefined symbol: __tunable_is_initialized`). A configured Plasma 6 rootfs needs real
 maintainer scripts, so a chroot-less workaround would produce an unbootable image.
 
-The reproducible path is the workflow in `ci/iso-workflow.yml`, which builds on a runner that
+The reproducible path is the workflow in `.github/workflows/iso.yml`, which builds on a runner that
 allows privileged mounts.
 
 ## What the workflow does
@@ -29,32 +29,52 @@ Phase 2 from-source kernel artifact. `scripts/build-rootfs.sh` exports `vmlinuz`
 `modules.tar.gz` and `firmware.tar.xz` into `build/out/kernel/` so the ISO and initramfs steps
 are identical either way.
 
-## Enabling it (one step, needs repo owner)
+## Running it
 
-Adding a workflow file requires the `workflow` scope, which the current GitHub authorization
-does not have (`git push` returns: `refusing to allow an OAuth App to create or update workflow
-.github/workflows/iso.yml without workflow scope`).
+The workflow lives at `.github/workflows/iso.yml` and runs on every push to `main` that
+touches `scripts/`, `rootfs/`, `boot/`, `apps/`, `desktop/`, the `Makefile` or the workflow
+itself, and on demand from Actions -> iso -> Run workflow. It needs the `contents: write`
+permission the file already declares, which is what lets it publish a release.
 
-Either:
+## Measured sizes (run #10, packaged kernel 6.12.107+deb13-amd64)
 
-- re-authorize the GitHub connection with the `workflow` scope, then run:
-  ```bash
-  git mv ci/iso-workflow.yml .github/workflows/iso.yml
-  git commit -m "ci: build the ISO" && git push
-  ```
-- or in the GitHub web UI: Actions → New workflow → paste the contents of
-  `ci/iso-workflow.yml` as `.github/workflows/iso.yml` and commit.
-
-The push triggers the build. Expect roughly 20-35 minutes for the bootstrap and squash, then
-the ISO is downloadable from Releases (`iso-<run number>`) and from the run's artifacts.
-
-## Expected sizes
-
-| Artifact | Approximate |
+| Artifact | Measured |
 | --- | --- |
-| `zaod-rootfs.squashfs` | 1.4-1.8 GB (zstd, level from `SQUASH_LEVEL`) |
-| `initramfs.img` | 20-40 MB |
-| `zaod-os-0.4.0-x86_64.iso` | 1.5-1.9 GB |
+| `zaod-rootfs.squashfs` | 818 MB (zstd 19, from a 2203 MB uncompressed tree) |
+| `zaod-rootfs.tar` | 2.2 GB uncompressed, reproducible |
+| `initramfs.img` | 2.0 MB (23 modules: the 18 boot drivers plus their `modules.dep` closure) |
+| `zaod-os-0.4.0-x86_64.iso` | 847 MB |
+| rootfs package count | 108 |
+
+The wall-clock cost on a `ubuntu-24.04` runner is about 7 minutes: roughly 3 for the
+bootstrap, 3 for the squash at level 19, and seconds for the initramfs and the ISO assembly.
+
+## Defects that had to be fixed before the build went green
+
+Each of these failed a run on its own, and two of them reported the same misleading error.
+
+- **Rootfs package names** (run #2): four names in `rootfs/packages.list` do not exist in
+  trixie (`plasma-workspace-wayland`, `kscreenlocker`, `zram-generator`, `python3-pyqt6-svg`).
+- **Runner keyring** (run #1): the image ships a Debian keyring older than trixie, so
+  `InRelease` could not be verified. The workflow installs the current
+  `debian-archive-keyring` first.
+- **Initramfs module mapping** (run #7): the gate demanded a hand-written map from every
+  config option to a module name and only knew four options.
+- **`CONFIG_DEVTMPFS_MOUNT`** (run #8): treated as mandatory although Debian leaves it unset
+  and the live init mounts devtmpfs itself.
+- **`modules.dep` missing** (run #9): two defects produced one message. `build-rootfs.sh`
+  packed `/lib/modules` before `depmod` had written `modules.dep`, and the check itself piped
+  a tar listing into `grep -q`, so grep's early exit killed tar with SIGPIPE and `pipefail`
+  reported the broken pipe as a missing file. `depmod` now runs before the pack, the archive
+  is listed once into a temp file, and nothing pipes a listing into `grep -q` or `head`.
+- **`/sbin/modprobe` missing** (same fix): the image only provided applet symlinks in `/bin`,
+  but the kernel autoloads modules through `/sbin/modprobe`. `squashfs` and `overlay` were
+  therefore never loaded and `mount -t squashfs` dropped every boot into the rescue shell.
+  The image now ships `/sbin/modprobe` and the live init modprobes the whole boot stack,
+  including `sr_mod`/`cdrom` for optical boot.
+- **`SHA256SUMS: Permission denied`** (run #10): the ISO was written successfully and the
+  next step failed, because every build step runs through `sudo` and `build/out` belonged to
+  root. The workflow now chowns `build/out` back to the runner before the checksum step.
 
 ## Verifying a build
 
