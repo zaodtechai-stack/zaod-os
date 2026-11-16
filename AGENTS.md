@@ -91,6 +91,28 @@ make sandbox-proof     # 0 full proof, 3 filesystem-only (no netns), 1 failed
 
 ## Audit log
 
+### 2026-11-16: the ISO builds, boots and is published
+
+- Workflow `iso` is green on `main` from `0975c5c` (run #11) and `dff4c18` (run #12).
+  Releases `iso-11` and `iso-12` carry `zaod-os-0.4.0-x86_64.iso` (847 MB) plus
+  `SHA256SUMS`; the asset is publicly downloadable and 200s on a HEAD request.
+- Measured on the runner: squashfs 818 MB (zstd 19 from a 2203 MB tree), initramfs
+  2.0 MB, ISO 847 MB, 108 packages, ~7 min wall clock.
+- Boot evidence: the ISO mounts itself (`using boot media /dev/sr0`), unpacks the
+  squashfs, stacks the tmpfs overlay and hands over to systemd, which reaches a
+  `zaod login:` prompt on `ttyS0`. That closes the media-detection and module-loading
+  blockers that had every earlier boot landing in the rescue shell.
+- Defects fixed on the way, each of which failed a run on its own: rootfs package
+  names that trixie does not ship, an old runner keyring, the initramfs module
+  mapping, `CONFIG_DEVTMPFS_MOUNT` treated as mandatory, `modules.dep` packed before
+  `depmod` ran, a `tar | grep -q` pipeline reporting SIGPIPE as a missing file,
+  `/sbin/modprobe` absent from the image, `build/out` owned by root when the checksum
+  step ran, and media detection that trusted an iso9660 label busybox cannot read.
+- Still unverified here: GRUB's graphical hand-off and the Plasma 6 session. In this
+  1-vCPU sandbox every ISO, including the published `iso-11`, freezes at the El Torito
+  hand-off under QEMU, so the graphics check needs a machine with KVM or a real GPU.
+  Phase 5 and the phase 10 acceptance run stay open until then.
+
 ### 2026-11-15: QA audit of phases 1, 2, 7 (1 vCPU sandbox)
 
 - Phase 1: `make doctor` clean; `sha256sums.asc` signature from the kernel.org
