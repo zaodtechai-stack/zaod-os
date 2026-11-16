@@ -72,7 +72,7 @@ def run_supervisor(tmp, child_body, with_live_root):
         # plain timeout would never end it and the test would read no output.
         done = subprocess.run(
             ["timeout", "-s", "KILL", "8", "sh", str(SUPERVISOR)],
-            capture_output=True, text=True, env=env, timeout=20,
+            capture_output=True, text=True, env=env, timeout=20, check=False,
         )
         return done.returncode, done.stdout + done.stderr
     except subprocess.TimeoutExpired:
@@ -84,7 +84,7 @@ def test_failing_child_does_not_exit_pid1():
     with tempfile.TemporaryDirectory() as tmp:
         rc, out = run_supervisor(tmp, "exit 1\n", with_live_root=False)
         check("supervisor survives a failing boot logic", rc in (124, -9),
-              "expected the rescue loop to keep it alive, exit code was %s" % rc)
+              f"expected the rescue loop to keep it alive, exit code was {rc}")
         check("the failure is reported on the screen", "did not finish mounting a live root" in out)
         check("the rescue shell is opened", "Dropping to a rescue shell" in out)
         check("PID 1 never reported an exit", "PID 1 was asked to exit" not in out)
@@ -95,7 +95,7 @@ def test_child_that_dies_midway_is_reported():
     with tempfile.TemporaryDirectory() as tmp:
         rc, out = run_supervisor(tmp, "kill -9 $$\n", with_live_root=False)
         check("supervisor survives a killed boot logic", rc in (124, -9),
-              "exit code was %s" % rc)
+              f"exit code was {rc}")
         check("the killed child's status is reported", "the boot logic returned with status" in out)
         check("the rescue shell is opened", "Dropping to a rescue shell" in out)
 
@@ -104,11 +104,11 @@ def test_ready_child_hands_over_to_switch_root():
     """Success means the supervisor execs switch_root itself, as PID 1 must."""
     with tempfile.TemporaryDirectory() as tmp:
         state = pathlib.Path(tmp) / "state"
-        body = 'mkdir -p "%s"\n: > "%s/boot-ready"\nexit 0\n' % (state, state)
+        body = f'mkdir -p "{state}"\n: > "{state}/boot-ready"\nexit 0\n'
         rc, out = run_supervisor(tmp, body, with_live_root=True)
-        check("a ready live root is handed over", "SWITCH_ROOT CALLED" in out,
-              "output was: %s" % out.strip().splitlines()[-3:])
-        check("the supervisor exited through switch_root", rc == 0, "exit code was %s" % rc)
+        tail = out.strip().splitlines()[-3:]
+        check("a ready live root is handed over", "SWITCH_ROOT CALLED" in out, f"output was: {tail}")
+        check("the supervisor exited through switch_root", rc == 0, f"exit code was {rc}")
 
 
 def test_scripts_carry_no_fatal_shell_options():
@@ -137,7 +137,7 @@ def main():
         except AssertionError as error:
             failures.append(str(error))
     if failures:
-        print("\n%d check(s) failed: %s" % (len(failures), ", ".join(failures)))
+        print(f"\n{len(failures)} check(s) failed: {', '.join(failures)}")
         return 1
     print("\nall PID 1 supervisor checks passed")
     return 0
