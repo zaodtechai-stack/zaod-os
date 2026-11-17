@@ -352,3 +352,16 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
 - Docs: new `docs/onboarding.md`, README phase-10 row updated.
 - Still open: nothing here is verified on hardware. The QEMU box reaches `zaod login:`
   but never `multi-user.target`, so neither the wizard nor SDDM has been seen running.
+
+### 2026-11-17: iso-26 shipped, console banner corrected
+
+- iso-26 (`01c5d10`) carries the login flow and the onboarding wizard. Checked inside
+  the published image: `/usr/lib/zaod/oobe.py` (0755), `zaod-oobe.service` enabled in
+  `multi-user.target.wants`, `zaodlive` with a real yescrypt hash, and no
+  `[Autologin]` section in `sddm.conf.d/zaod-live.conf`.
+- The wizard was then run against a real image rootfs: it created `hassan`
+  (uid 1001, home 0700, wheel + audio/video/render/input/netdev, GECOS "Hassan Ali"),
+  set the password, pointed `/etc/localtime` at Asia/Karachi, wrote SDDM `state.conf`
+  owned by sddm, and stamped `/etc/zaod/oobe-done`.
+- `/etc/issue` still said "the desktop starts by itself", which stopped being true
+  when autologin was removed. Corrected; the next image carries it.

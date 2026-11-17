@@ -289,7 +289,7 @@ Zaod OS live session  \\n \\l
 
   user: $LIVE_USER    password: $LIVE_PASSWORD
 
-The desktop starts by itself. If it did not come up, log in above and run:
+The desktop asks for this same login. If it did not come up, log in above and run:
   sudo systemctl start sddm
 ISSUE
 as_root chmod 0644 "$ROOTFS_DIR/etc/issue"
