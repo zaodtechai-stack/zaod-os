@@ -478,3 +478,18 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
     writes the pending jobs and the failed units onto tty1 and starts
     display-manager directly. It never writes over the onboarding wizard.
 - `tests/check_boot_config.py`: 104 checks, 0 failed.
+
+### 2026-11-17 (iso-33): the live session stops carrying an installed system's work
+
+- Owner's words after iso-31: no errors at all on screen, fast boot. The hardware
+  photo still showed unit lines stopping around polkit and, before that, kernel
+  messages about Intel bluetooth firmware that read as failures.
+- The live mask list now also covers what a live root can never use: e2scrub
+  (`_reap` and the timer), apt-daily and apt-daily-upgrade, fstrim, logrotate,
+  dpkg-db-backup, systemd-tmpfiles-clean, bluetooth.service (this radio has no
+  firmware in the image, so bluez has nothing to do but fail) and
+  wpa_supplicant.service (NetworkManager runs its own). Only the live root is
+  masked; an installed system keeps every one of them.
+- Combined with the 75 s unit ceiling and the watchdog from iso-32, a stuck unit
+  can no longer hold the boot, and the screen explains itself if one tries.
+- Boot config checks: 111 run, 0 failed. ruff clean, 93 tests pass.

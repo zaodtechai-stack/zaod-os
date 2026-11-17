@@ -192,6 +192,24 @@ def check_live_init(report: Report) -> None:
         "getty@.service",
         "the live boot enables a second console as a way in",
     )
+    # A live session is not an installed system: install-time maintenance, the
+    # firmware-less bluetooth radio and the ifupdown-era supplicant only add
+    # failing or pointless units to a boot someone has to photograph. All of
+    # them stay enabled on an installed system; only the live root is masked.
+    for unit in (
+        "e2scrub_reap.service",
+        "e2scrub_all.timer",
+        "apt-daily.timer",
+        "apt-daily-upgrade.timer",
+        "fstrim.timer",
+        "bluetooth.service",
+        "wpa_supplicant.service",
+    ):
+        report.check(
+            unit in text,
+            f"the live boot masks {unit}",
+            "not in the live mask list",
+        )
 
 
 def check_scripts(report: Report) -> None:
