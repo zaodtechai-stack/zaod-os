@@ -66,7 +66,7 @@ imports "gtk-layer-shell for the panel" \
 # 3. Icons: GTK ignores an icon directory that has no index.theme, and an SVG
 #    icon needs librsvg's gdk-pixbuf loader to load at all.
 have /usr/share/icons/hicolor/index.theme
-loader="$(find "$TARGET_ROOT/usr/lib" -name 'libpixbufloader-svg.so' 2>/dev/null | head -1)"
+loader="$(find "$TARGET_ROOT/usr/lib" -name 'libpixbufloader*svg.so' 2>/dev/null | head -1)"
 if [[ -n "$loader" ]]; then ok "SVG pixbuf loader (${loader#"$TARGET_ROOT"} )"; else bad "no SVG pixbuf loader (icons and wallpaper stay blank)"; fi
 
 # 4. The session: entry file, launcher, panel, compositor and wallpaper.
@@ -95,6 +95,14 @@ while IFS= read -r entry; do
   exec_line="$(as_root sed -n 's/^Exec=//p' "$TARGET_ROOT$entry" 2>/dev/null | head -1 || true)"
   [[ -n "$exec_line" ]] || { bad "$entry has no Exec line"; continue; }
   program="${exec_line%% *}"
+  # Exec= may name a bare command that the image finds on PATH.
+  if [[ "$program" != /* ]]; then
+    resolved=""
+    for dir in /usr/local/bin /usr/bin /usr/sbin /bin /sbin; do
+      if as_root test -x "$TARGET_ROOT$dir/$program"; then resolved="$dir/$program"; break; fi
+    done
+    program="${resolved:-$program}"
+  fi
   if [[ "$program" == /usr/bin/python3 ]]; then
     script="$(printf '%s\n' "$exec_line" | awk '{print $2}')"
     if as_root test -f "$TARGET_ROOT$script"; then ok "$entry -> $script"; else bad "$entry runs $script, which is not in the image"; fi
@@ -103,7 +111,10 @@ while IFS= read -r entry; do
   else
     bad "$entry runs $program, which is not in the image"
   fi
+  # Only the launchers Zaod installs are held to the icon rule; a package's own
+  # entry may name a theme icon we are not required to ship.
   icon="$(as_root sed -n 's/^Icon=//p' "$TARGET_ROOT$entry" | head -1)"
+  zaod_entry="$(as_root sed -n 's/^X-Zaod-AppId=//p' "$TARGET_ROOT$entry" | head -1)"
   if [[ -n "$icon" ]]; then
     if [[ "$icon" == /* ]]; then
       if as_root test -s "$TARGET_ROOT$icon"; then
@@ -115,8 +126,10 @@ while IFS= read -r entry; do
       ok "  icon $icon"
     elif as_root test -s "$TARGET_ROOT/usr/share/pixmaps/$icon.svg" || as_root test -s "$TARGET_ROOT/usr/share/pixmaps/$icon.png"; then
       ok "  icon $icon (pixmaps)"
-    else
+    elif [[ -n "$zaod_entry" ]]; then
       bad "$entry wants icon $icon, which is not installed"
+    else
+      printf '  note %s names theme icon %s\n' "$entry" "$icon"
     fi
   fi
 done < <(find "$TARGET_ROOT/usr/share/applications" -maxdepth 1 -name '*.desktop' -printf '/usr/share/applications/%f\n' 2>/dev/null | sort)

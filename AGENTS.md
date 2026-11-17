@@ -578,3 +578,19 @@ loader, and checks every launcher entry's Exec and Icon really exist. build-
 rootfs.sh fails the build if any of it is missing, so a desktop like this one
 cannot ship again.
 
+### 2026-11-17 (fix 2): the launchers pointed at the build host
+
+The panel launches apps through Gio.AppInfo, so it runs whatever Exec= says.
+install-app-set.py wrote Exec with the build host's $ROOTFS path
+(/home/runner/work/zaod-os/.../build/rootfs/opt/zaod/apps/...), which does not
+exist inside the image: every icon in the grid started nothing, on hardware, while
+the build log looked right. Exec now uses the in-image path
+(/opt/zaod/apps/<slug>/payload/main.py), and tests/test_app_set_paths.py asserts it
+and that every MANIFEST entry file is really in its payload.
+
+The new verify step also caught two of its own false alarms and was corrected: it
+looked for libpixbufloader-svg.so when librsvg2-common ships libpixbufloader_svg.so,
+and it resolved bare Exec names against the host instead of the image PATH. Theme
+icon names from other packages' entries are now notes, not failures; only launchers
+Zaod installs must resolve their icon.
+

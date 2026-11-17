@@ -1,0 +1,76 @@
+"""The launcher entries the image ships must run inside the image.
+
+An Exec line built from the build host's path looks correct in the build log and
+does nothing on real hardware: this is the check that keeps that from happening
+again.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+def load_installer():
+    spec = importlib.util.spec_from_file_location(
+        "install_app_set", REPO / "scripts" / "install-app-set.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def make_app(apps_dir: Path, slug: str, app_id: str) -> None:
+    payload = apps_dir / slug / "payload"
+    payload.mkdir(parents=True)
+    (payload / "main.py").write_text("print('hi')\n")
+    (apps_dir / slug / "MANIFEST.json").write_text(
+        json.dumps(
+            {
+                "id": app_id,
+                "name": slug.title(),
+                "summary": "test app",
+                "entry": {"exec": "payload/main.py"},
+                "categories": ["Utility"],
+            }
+        )
+    )
+    (apps_dir / slug / "icon.svg").write_text("<svg/>\n")
+
+
+def test_launcher_exec_uses_the_image_path(tmp_path: Path) -> None:
+    installer = load_installer()
+    root = tmp_path / "rootfs"
+    (root / "etc").mkdir(parents=True)
+    apps_dir = tmp_path / "apps"
+    make_app(apps_dir, "notes", "org.zaod.notes")
+
+    installed = installer.install(root, apps_dir, dry_run=False)
+
+    assert installed == ["org.zaod.notes"]
+    entry = (root / "usr/share/applications/org.zaod.notes.desktop").read_text()
+    assert "Exec=/usr/bin/python3 /opt/zaod/apps/notes/payload/main.py" in entry
+    # The build host's path must never appear in a launcher.
+    assert str(tmp_path) not in entry
+    assert (root / "opt/zaod/apps/notes/payload/main.py").is_file()
+    assert (root / "usr/share/icons/hicolor/scalable/apps/org.zaod.notes.svg").is_file()
+
+
+def test_every_shipped_app_points_into_the_image() -> None:
+    installer = load_installer()
+    apps_dir = REPO / "apps"
+    for app in sorted(apps_dir.iterdir()):
+        manifest = app / "MANIFEST.json"
+        if not manifest.is_file() or not (app / "payload").is_dir():
+            continue
+        if app.name in installer.SKIP:
+            continue
+        data = json.loads(manifest.read_text())
+        entry = data.get("entry") or {}
+        exe = Path(entry.get("exec") or "payload/main.py").name
+        assert (
+            app / "payload" / exe
+        ).is_file(), f"{app.name}: MANIFEST entry {exe} is not in its payload"

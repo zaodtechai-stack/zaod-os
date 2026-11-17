@@ -40,7 +40,11 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
         manifest = json.loads(manifest_path.read_text())
         app_id = manifest["id"]
         slug = app.name
-        target = root / "opt/zaod/apps" / slug
+        # Paths in a launcher entry are read inside the image, never on the
+        # machine that built it: an Exec holding this build's $ROOTFS path is a
+        # launcher that silently does nothing on real hardware.
+        image_dir = Path("/opt/zaod/apps") / slug
+        target = root / image_dir.relative_to("/")
         entry = manifest.get("entry") or {}
         exe = entry.get("exec") or "payload/main.py"
         if dry_run:
@@ -67,7 +71,7 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
             "Type=Application\n"
             f"Name={manifest.get('name', slug)}\n"
             f"Comment={manifest.get('summary', '')}\n"
-            f"Exec=/usr/bin/python3 {target}/payload/{Path(exe).name}\n"
+            f"Exec=/usr/bin/python3 {image_dir}/payload/{Path(exe).name}\n"
             f"Icon={app_id}\n"
             "Terminal=false\n"
             f"Categories={categories(manifest)}\n"
