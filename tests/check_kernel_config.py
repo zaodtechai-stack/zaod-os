@@ -19,6 +19,18 @@ REQUIRED = {
     "CONFIG_DRM_RADEON": "m",
     "CONFIG_DRM_VIRTIO_GPU": "m",
     "CONFIG_DRM_SIMPLEDRM": "y",
+    # The console has to survive the GPU driver taking the display over: fbdev
+    # emulation plus a default DRM client is what keeps a text console (and so
+    # the boot messages, and the watchdog's report) on the screen after i915 /
+    # amdgpu / radeon load. SYSFB_SIMPLEFB is the same guarantee when no native
+    # driver binds at all, including the nomodeset entry. Turning any of these
+    # off brings back the blank-screen boot that made every hardware report a
+    # still photo of the initramfs text.
+    "CONFIG_DRM_FBDEV_EMULATION": "y",
+    "CONFIG_DRM_CLIENT_DEFAULT_FBDEV": "y",
+    "CONFIG_DRM_CLIENT_DEFAULT": '"fbdev"',
+    "CONFIG_SYSFB_SIMPLEFB": "y",
+    "CONFIG_DRM_CLIENT_LOG": "y",
     "CONFIG_SATA_AHCI": "y",
     "CONFIG_NVME_CORE": "m",
     "CONFIG_BLK_DEV_NVME": "m",

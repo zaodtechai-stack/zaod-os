@@ -493,3 +493,24 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
 - Combined with the 75 s unit ceiling and the watchdog from iso-32, a stuck unit
   can no longer hold the boot, and the screen explains itself if one tries.
 - Boot config checks: 111 run, 0 failed. ruff clean, 93 tests pass.
+
+### 2026-11-17 (kernel console): the blank screen after the GPU driver loads
+
+- Reported cause, and it contradicts nothing in the earlier logs: `boot/grub/grub.cfg`
+  writes the boot to the EFI/VESA framebuffer the firmware hands over. udev then
+  loads i915/amdgpu/radeon, the modesetting driver replaces that framebuffer, and
+  the kernel had `# CONFIG_DRM_FBDEV_EMULATION is not set` with
+  `CONFIG_DRM_CLIENT_DEFAULT=""`, so no text console was created on the new one.
+  The machine kept booting with nothing on screen, and `zaod-boot-watchdog` could
+  not help: it writes to the tty whose console had just disappeared.
+- `kernel/build.sh` now enables CONFIG_DRM_FBDEV_EMULATION,
+  CONFIG_DRM_CLIENT_DEFAULT_FBDEV, CONFIG_SYSFB_SIMPLEFB and CONFIG_DRM_CLIENT_LOG,
+  and `kernel/zaod_defconfig` carries the result (CONFIG_DRM_CLIENT_DEFAULT="fbdev").
+  Verified against the v6.18 Kconfig: the client options moved to
+  drivers/gpu/drm/clients/Kconfig, and DRM_FBDEV_EMULATION depends on
+  DRM_CLIENT_SELECTION, which this config already sets.
+- SYSFB_SIMPLEFB also fixes the other half: DRM_SIMPLEDRM was built in with no
+  system framebuffer to bind, so the "safe graphics" (nomodeset) entry had no DRM
+  device and could not start Plasma.
+- `tests/check_kernel_config.py` requires all four, with the reason inline, so the
+  next change cannot quietly turn the console off again.

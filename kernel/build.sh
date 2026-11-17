@@ -56,6 +56,27 @@ make olddefconfig >/dev/null
 ./scripts/config --module CONFIG_DRM_RADEON
 ./scripts/config --module CONFIG_DRM_VIRTIO_GPU
 ./scripts/config --enable CONFIG_DRM_SIMPLEDRM
+# The console has to survive the GPU driver taking the display over. Until this
+# was set, boot wrote to the EFI/VESA framebuffer the firmware handed over, then
+# udev loaded i915/amdgpu/radeon, the modesetting driver replaced that
+# framebuffer, and nothing re-created a text console on the new one: fbdev
+# emulation was off and no default DRM client was selected. The machine kept
+# booting with a blank screen - the same still photo every report came back with,
+# and the watchdog could not help because it writes to a tty that no longer had a
+# console behind it.
+#   DRM_FBDEV_EMULATION  gives the modesetting driver fbdev support, which is
+#                        what puts fbcon on top of the DRM device.
+#   DRM_CLIENT_DEFAULT_FBDEV picks fbdev as the default DRM client, so
+#                        CONFIG_DRM_CLIENT_DEFAULT becomes "fbdev" instead of "".
+#   SYSFB_SIMPLEFB       registers the firmware framebuffer as a system
+#                        framebuffer, so simpledrm binds on hardware where no
+#                        native driver loads (and in the nomodeset entry).
+#   DRM_CLIENT_LOG       the log client, the only other way to see anything on a
+#                        screen before fbcon exists. fbdev stays the default.
+./scripts/config --enable CONFIG_DRM_FBDEV_EMULATION
+./scripts/config --enable CONFIG_DRM_CLIENT_DEFAULT_FBDEV
+./scripts/config --enable CONFIG_SYSFB_SIMPLEFB
+./scripts/config --enable CONFIG_DRM_CLIENT_LOG
 ./scripts/config --enable CONFIG_FB_VESA
 ./scripts/config --enable CONFIG_SATA_AHCI
 ./scripts/config --enable CONFIG_ATA
