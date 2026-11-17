@@ -352,6 +352,43 @@ if [ "$SAFEGFX" -eq 1 ]; then
   echo safegfx > "$NEW_ROOT/run/zaod/boot-mode" || fail "cannot record safe-graphics mode"
 fi
 
+STEP="keeping the boot off the boot media"
+# A live boot has two jobs: mount the image, and reach the desktop. Two units in
+# the image work against the second one on the media people actually boot from:
+#
+#   ldconfig.service rebuilds /etc/ld.so.cache by reading the ELF header of
+#   every library in the image - 3898 of them here - straight off the squashfs
+#   on a USB stick. The unit carries no timeout, so the boot sits in
+#   "Job ldconfig.service/start running (no limit)" for minutes and looks hung;
+#   iso-29 was reported frozen at exactly that point six times. The cache the
+#   image ships is already correct, and a read-only live root cannot change its
+#   libraries, so the rebuild has nothing to discover. Masked.
+#
+#   plymouth-* want to paint a splash this image boots without, and
+#   plymouth-quit-wait (TimeoutSec=0) waits for a splash that never runs.
+#
+# A mask is a symlink to /dev/null in /etc/systemd/system, which the overlay
+# keeps in the tmpfs write layer, so the boot media is still never written to.
+if [ "$OVERLAY_ACTIVE" -eq 1 ]; then
+  mkdir -p "$NEW_ROOT/etc/systemd/system" || fail "cannot prepare the live unit masks"
+  for unit in ldconfig.service plymouth-start.service plymouth-quit.service \
+              plymouth-quit-wait.service plymouth-read-write.service; do
+    ln -sf /dev/null "$NEW_ROOT/etc/systemd/system/$unit" \
+      || fail "cannot mask $unit for the live session"
+  done
+  say "masked ldconfig and plymouth: the live root needs neither"
+  # Ctrl+Alt+F2 must always be a way into a live stick. The wizard owns tty1
+  # and the display manager takes it over afterwards, so a second getty is the
+  # one path that exists even when neither can take the console.
+  mkdir -p "$NEW_ROOT/etc/systemd/system/getty.target.wants" \
+    || fail "cannot prepare the live rescue console"
+  ln -sf /usr/lib/systemd/system/getty@.service \
+    "$NEW_ROOT/etc/systemd/system/getty.target.wants/getty@tty2.service" \
+    || fail "cannot enable the live rescue console"
+else
+  say "read-only live root: ldconfig and plymouth cannot be masked"
+fi
+
 STEP="checking the live system's init"
 [ -x "$NEW_ROOT/sbin/init" ] || fail "the live image has no executable /sbin/init"
 

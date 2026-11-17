@@ -415,3 +415,34 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   scripts executable, `check=False` on the `chpasswd` run whose returncode is
   inspected, `/etc/passwd` read through a context manager, and two string nits.
   ruff 0.17.5 and shellcheck both clean, `pytest tests zaod/tests -q`: 199 passed.
+
+### 2026-11-17: the boot was never frozen - it was reading 3898 libraries off the stick
+
+- Reported, with a photo of the console: the boot stops after
+  `Started systemd-rfkill.service` and never goes on, five or six times.
+- Reproduced in QEMU on iso-29. The console sits in
+  `Job ldconfig.service/start running (12s / no limit)` and only then reaches
+  `basic.target`. `ldconfig.service` has no timeout, and on a live root it reads
+  the ELF header of every library in the squashfs - 3898 here - straight off the
+  boot media. On a USB stick that is minutes of a screen that never changes, so
+  it reads as a hang. The image already ships a correct `/etc/ld.so.cache`, and a
+  read-only live root cannot change its libraries, so the rebuild has nothing to
+  find.
+- iso-29 also still ran plymouthd (`plymouth.enable=0` was never in the image's
+  command line): it took the console the onboarding wizard draws on, and
+  `plymouth-quit-wait` (TimeoutSec=0) waits for a splash that cannot quit.
+- Fix, `boot/initramfs/zaod-live`: the live boot masks `ldconfig.service` and the
+  four plymouth units in the tmpfs write layer (the media is still never
+  written), and enables `getty@tty2` so Ctrl+Alt+F2 is always a way in.
+  `plymouth.enable=0` is now on the GRUB command line too, and
+  `rootfs/overlay/.../ldconfig.service.d/10-zaod-timeout.conf` caps the unit at
+  60 s on an installed system, where the cache refresh is still wanted.
+- Verified on the rebuilt ISO in QEMU: `ldconfig` and `plymouth` never appear in
+  the boot log at all, `basic.target` and `getty.target` are reached in about
+  40 s under TCG, `getty@tty2` comes up, `zaod-oobe` starts, and the VGA
+  screendump reads "Welcome to Zaod OS ... Your name:" - the wizard, on screen,
+  instead of a frozen log.
+- `tests/check_boot_config.py` grows checks for the command line and the masks,
+  and two long-stale checks (it still expected `set -eu` in a script that
+  deliberately has none, and looked for the rescue loop in the wrong file) now
+  read the file they describe: 92 checks, 0 failed.

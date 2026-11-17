@@ -52,6 +52,10 @@ def check_grub(report: Report) -> None:
     report.contains(text, "set timeout=5", "autoboot timeout is set")
     report.contains(text, "insmod all_video", "all video drivers are loaded")
     report.contains(text, "terminal_output gfxterm", "graphical terminal is used")
+    # plymouthd ran on iso-29 because only "splash" was absent, and it then held
+    # the console the onboarding wizard draws on. The daemon is now switched off
+    # on the command line as well as masked from the live boot.
+    report.contains(text, "plymouth.enable=0", "GRUB disables plymouth on the command line")
 
     entries = re.findall(r"menuentry\s+\"([^\"]+)\"", text)
     report.check(len(entries) >= 7, "menu has at least seven entries", f"found {len(entries)}")
@@ -123,7 +127,12 @@ def check_live_init(report: Report) -> None:
     if not report.check(bool(text), "boot/initramfs/zaod-live exists"):
         return
     report.check(path.stat().st_mode & 0o111 != 0, "live init is executable")
-    report.contains(text, "set -eu", "live init fails fast")
+    # Deliberately no `set -e`: an unguarded failure used to exit PID 1 and
+    # panic the machine, so every step reports through fail() instead.
+    report.check(
+        "set -eu" not in text and "fail()" in text,
+        "every live-init step reports its own failure",
+    )
     report.contains(text, "switch_root", "live init hands over with switch_root")
     report.contains(text, "zaod.toram", "live init understands zaod.toram")
     report.contains(text, "zaod.rescue", "live init understands zaod.rescue")
@@ -134,11 +143,15 @@ def check_live_init(report: Report) -> None:
     # A rescue shell that is exec'd once can still exit, and PID 1 exiting is the
     # "Attempted to kill init" panic this file exists to prevent. The shell is
     # therefore reopened in a loop that has no exit.
+    # The rescue shell belongs to /init, the only process that may be PID 1: a
+    # shell that is exec'd once can exit, and PID 1 exiting is the "Attempted to
+    # kill init" panic this file exists to prevent, so it is reopened in a loop.
+    pid1 = read(BOOT / "initramfs/init")
     report.check(
-        re.search(r"^rescue\(\) \{", text, re.MULTILINE) is not None
-        and "/bin/sh" in text
-        and re.search(r"while :; do", text) is not None
-        and "exec /bin/sh" not in text,
+        re.search(r"^rescue\(\) \{", pid1, re.MULTILINE) is not None
+        and "$RESCUE_SHELL" in pid1
+        and re.search(r"while :; do", pid1) is not None
+        and "exec /bin/sh" not in pid1,
         "a failure drops to a rescue shell that PID 1 cannot leave",
     )
     report.check(
@@ -156,6 +169,18 @@ def check_live_init(report: Report) -> None:
     report.check(
         "$MEDIA" in text and "mount -t iso9660 -o ro" in text,
         "the boot media is mounted read-only",
+    )
+    # ldconfig.service reads every library in the image off the boot media and
+    # has no timeout, which is the "frozen" boot people reported on a USB stick.
+    report.check(
+        re.search(r"for unit in .*ldconfig\.service", text) is not None
+        and 'ln -sf /dev/null "$NEW_ROOT/etc/systemd/system/$unit"' in text,
+        "the live boot masks the units that would grind on the boot media",
+    )
+    report.contains(
+        text,
+        "getty@.service",
+        "the live boot enables a second console as a way in",
     )
 
 
