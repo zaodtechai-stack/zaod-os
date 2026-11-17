@@ -79,6 +79,27 @@ for app_dir in "$APPS_DIR"/*/; do
   sleep 0.5
 done
 
+# The panel does not run the app binary itself: it asks Gio to launch the
+# .desktop entry, exactly like a click on an icon. That path (Gio + Exec +
+# zaod-run) is what the person actually uses, so it is checked on its own.
+launch_entry=/usr/share/applications/org.zaod.notes.desktop
+if [ -f "$launch_entry" ] && command -v /usr/bin/gio >/dev/null 2>&1; then
+  checked=$((checked + 1))
+  /usr/bin/gio launch "$launch_entry" >"$RUNTIME/gio-launch.log" 2>&1
+  sleep "$SETTLE"
+  if pgrep -f "org.zaod.notes|/opt/zaod/apps/notes/payload/main.py" >/dev/null 2>&1; then
+    echo "  ok   a launcher entry starts its app through gio"
+    pkill -f "/opt/zaod/apps/notes/payload/main.py" 2>/dev/null
+  else
+    failures=$((failures + 1))
+    echo "  FAIL the notes launcher entry started nothing" >&2
+    sed -n '1,15p' "$RUNTIME/gio-launch.log" | sed 's/^/    /' >&2
+    if [ -f "$HOME/.zaod/logs/org.zaod.notes.log" ]; then
+      tail -n 15 "$HOME/.zaod/logs/org.zaod.notes.log" | sed 's/^/    /' >&2
+    fi
+  fi
+fi
+
 echo "test-apps-wayland: $checked apps checked, $failures failed"
 if [ "$failures" -eq 0 ] && [ "$checked" -gt 0 ]; then exit 0; fi
 exit 1
