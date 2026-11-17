@@ -1,11 +1,11 @@
 // Zaod OS login theme. Original artwork and layout only.
 //
 // Built from Qt Quick primitives only - Rectangle, Text, TextInput, MouseArea -
-// and deliberately from neither Qt Quick Controls nor SddmComponents. The greeter
+// and deliberately from neither of the component modules. The greeter
 // in this image rejected `Button.palette` and then `Button.contentItem` with
 // "Cannot assign to non-existent property", which painted SDDM's red "The
 // current theme cannot be loaded" banner over the login box on real hardware:
-// `Button` and `TextField` in a theme resolve to components' simplified types,
+// `Button` and `TextField` in a theme resolve to those modules' simplified types,
 // not to the Controls widgets that carry those properties. Nothing here shadows a
 // Qt Quick type, so no property can go missing.
 import QtQuick 2.15

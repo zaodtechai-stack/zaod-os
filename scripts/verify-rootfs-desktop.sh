@@ -85,7 +85,7 @@ fi
 theme_qml="$TARGET_ROOT/usr/share/sddm/themes/zaod/Main.qml"
 if as_root test -s "$theme_qml"; then
   ok "/usr/share/sddm/themes/zaod/Main.qml"
-  if as_root grep -Eq "QtQuick.Controls|SddmComponents" "$theme_qml"; then
+  if as_root grep -v '^[[:space:]]*//' "$theme_qml" | grep -Eq "QtQuick.Controls|SddmComponents"; then
     bad "the login theme imports a module whose components shadow the Qt Quick types it styles"
   else
     ok "the login theme stays inside Qt Quick core"

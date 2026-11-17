@@ -88,7 +88,7 @@ install_file "$DESKTOP_DIR/sddm/sddm.conf.d/zaod.conf" \
   "$TARGET_ROOT/etc/sddm.conf.d/zaod.conf" 0644
 install_file "$DESKTOP_DIR/sddm/sddm.conf.d/zaod-live.conf" \
   "$TARGET_ROOT/etc/sddm.conf.d/zaod-live.conf" 0644
-for f in Main.qml theme.conf metadata.desktop background.svg; do
+for f in Main.qml theme.conf metadata.desktop background.svg background.jpg; do
   install_file "$DESKTOP_DIR/sddm/themes/zaod/$f" \
     "$TARGET_ROOT/usr/share/sddm/themes/zaod/$f" 0644
 done
