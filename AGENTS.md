@@ -614,3 +614,32 @@ error; tests/check_desktop_config.py forbids palette assignments, contentItem
 assignments, and both component imports; verify-rootfs-desktop.sh fails the build
 if the installed theme imports either module.
 
+### 2026-11-17 (fix 4): apps, icons, store, wallpaper, login theme
+
+Build 46 on hardware: no app opened, no icon or logo appeared, the login theme was
+rejected, and the wallpaper never showed.
+
+* Apps: install-app-set.py copied only zaodapp.py, and zaodapp imports
+  zaod_tokens on its first line, so every payload died with
+  ModuleNotFoundError. All shared modules are copied; a test checks the installed
+  payload and the build runs each app inside the root.
+* Store: zaodlib was not in the image, so StoreBackend() raised before a window
+  existed. zaodlib and the zaod CLI are installed, and a Store without an index
+  opens with a notice.
+* Icons and wallpaper: only SVG shipped and no SVG loader worked, so both were
+  blank. Build now renders icons at 64/128/256 px and the wallpaper PNG at
+  2560x1440 in the image and refreshes the gdk-pixbuf and icon caches.
+* Login theme: SddmComponents shadows Button/TextField, so palette/contentItem do
+  not exist. Main.qml is Qt Quick core only, and a test loads it in Qt.
+* skel said XDG_CURRENT_DESKTOP=KDE; it says Zaod now.
+* scripts/smoke-apps-in-image.py fails the ISO when any app cannot open a window.
+
+### 2026-11-17 (wallpapers): nine built-in wallpapers from the owner
+
+desktop/design/wallpapers/collection/ holds nine 2560x1440 JPEGs the owner
+supplied (see the README in that directory for the list and provenance). The
+default is zaod-night-pier.jpg, the SDDM background is the same image, and
+`zaod-wallpaper [--list|NAME]` switches the desktop wallpaper by storing the
+choice in ~/.config/zaod/wallpaper, which labwc's autostart reads. One image was
+a Marvel wallpaper and is deliberately not shipped.
+
