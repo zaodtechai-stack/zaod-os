@@ -123,6 +123,14 @@ def check_build_guards(report: Report) -> None:
         "plasma-desktop" not in script,
         "the build does not require a Plasma package",
     )
+    report.check(
+        "verify-rootfs-desktop.sh" in script,
+        "the build verifies the desktop inside the image",
+    )
+    report.check(
+        "python3-pyside6.qtwidgets" in script,
+        "the build requires the toolkit the app set is written against",
+    )
 
 
 def check_removal_list(report: Report) -> None:

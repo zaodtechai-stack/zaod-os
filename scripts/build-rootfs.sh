@@ -95,7 +95,8 @@ mapfile -t removals < <(grep -vE '^[[:space:]]*(#|$)' "$REMOVE_LIST")
 # The desktop is Zaod's own: labwc is the compositor and the panel/app set come
 # from desktop/ and apps/, so no Plasma package belongs in this list.
 for required in systemd dbus network-manager pipewire wireplumber mesa-vulkan-drivers \
-                labwc sddm polkitd bubblewrap zram-tools earlyoom python3; do
+                labwc sddm polkitd bubblewrap zram-tools earlyoom python3 \
+                python3-pyside6.qtwidgets hicolor-icon-theme librsvg2-common; do
   printf '%s\n' "${packages[@]}" | grep -qx "$required" \
     || fail "the package list is missing $required"
 done
@@ -250,6 +251,11 @@ for pseudo in dev proc sys run; do
   CHROOT_MOUNTS+=("$pseudo")
 done
 as_root chroot "$ROOTFS_DIR" /usr/sbin/update-initramfs -c -k "$KERNEL_RELEASE"
+# Proof the desktop in this tree can run, while /proc and /dev are still
+# mounted: a missing toolkit or icon theme is a black screen on real
+# hardware, and it must fail here instead.
+say "verifying the desktop in the image"
+bash scripts/verify-rootfs-desktop.sh --root "$ROOTFS_DIR"
 cleanup_chroot_mounts
 trap - EXIT
 as_root chroot "$ROOTFS_DIR" /usr/bin/systemctl --root=/ enable NetworkManager.service \

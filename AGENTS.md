@@ -557,3 +557,24 @@ qtquick`, `-qtquick-controls`, `-qtquick-layouts`, `-qtquick-templates`,
 `check_desktop_config.py::check_login_theme_modules` reads every `import` in the
 theme's QML and requires the matching package, so this cannot regress.
 
+### 2026-11-17 (fix): the app set could not start, icons and wallpaper were blank
+
+On hardware the image booted but no application opened, no icon appeared and no
+wallpaper was drawn. Three separate causes, all from removing Plasma:
+
+1. The apps are PySide6 programs; packages.list installed PyQt6 (a different
+   binding) and no PySide6 at all. `python3-pyside6.qtcore/qtgui/qtwidgets/qtsvg/
+   qtqml/qtquick` and `libqt6svg6` now go in, PyQt6 comes out. `apps/smoke.py`
+   builds every window offscreen, which is the proof they start.
+2. Icons: an icon directory without index.theme is ignored, and SVG icons need
+   librsvg's gdk-pixbuf loader. `hicolor-icon-theme`, `librsvg2-common` and
+   `libgtk-3-bin` are now installed.
+3. The wallpaper is an SVG that swaybg loads through gdk-pixbuf, so it needed the
+   same loader.
+
+`scripts/verify-rootfs-desktop.sh` now runs inside the built tree before it is
+squashed: it imports PySide6 and Gtk 3, requires the hicolor index and SVG
+loader, and checks every launcher entry's Exec and Icon really exist. build-
+rootfs.sh fails the build if any of it is missing, so a desktop like this one
+cannot ship again.
+
