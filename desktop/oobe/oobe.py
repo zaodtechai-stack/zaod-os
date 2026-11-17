@@ -81,8 +81,10 @@ def validate_username(name: str, accounts: list[dict]) -> tuple[bool, str]:
     if not USERNAME_RE.match(name):
         return (
             False,
-            "Lower-case letters, digits and '-' only; it must start with a letter "
-            "and be at most 32 characters.",
+            (
+                "Lower-case letters, digits and '-' only; it must start with a letter "
+                "and be at most 32 characters."
+            ),
         )
     if name in RESERVED:
         return False, f"'{name}' is reserved by Zaod OS."
@@ -210,8 +212,13 @@ def apply_timezone(zone: str) -> None:
 
 def create_account(username: str, full_name: str, password: str) -> None:
     run(useradd_argv(username, full_name))
+    # chpasswd's exit status is inspected below, so the run must not raise.
     changer = subprocess.run(
-        ["chpasswd"], input=f"{username}:{password}\n", text=True, capture_output=True
+        ["chpasswd"],
+        input=f"{username}:{password}\n",
+        text=True,
+        capture_output=True,
+        check=False,
     )
     if changer.returncode != 0:
         raise RuntimeError(changer.stderr.strip() or "chpasswd failed")
@@ -250,7 +257,8 @@ def is_live() -> bool:
 
 
 def wizard(console: Console, passwd_path: str = PASSWD_FILE, dry_run: bool = False) -> int:
-    accounts = parse_accounts(open(passwd_path, encoding="utf-8").read())
+    with open(passwd_path, encoding="utf-8") as passwd:
+        accounts = parse_accounts(passwd.read())
     if not needs_onboarding(accounts):
         console.say("A Zaod OS account already exists; skipping onboarding.")
         return 0
@@ -324,7 +332,7 @@ def wizard(console: Console, passwd_path: str = PASSWD_FILE, dry_run: bool = Fal
     console.rule("Ready")
     console.say(f"  name:      {full_name}")
     console.say(f"  account:   {username}")
-    console.say(f"  admin:     yes (wheel, sudo with this password)")
+    console.say("  admin:     yes (wheel, sudo with this password)")
     if zone:
         console.say(f"  time zone: {zone}")
     console.say()
