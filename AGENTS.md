@@ -393,3 +393,25 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
 - `tests/test_oobe.py`: 12 tests, including the two skip paths.
   `tests/check_desktop_config.py`: 2160 checks, 0 failed.
 
+### 2026-11-17: the login screen comes back (the theme never said which Qt it was for)
+
+- Reported: the login screen was SDDM's own default, not the Zaod theme. iso-29
+  carries the fix.
+- Root cause, from SDDM 0.21's own source: `ThemeMetadata` reads
+  `[SddmGreeterTheme]` and defaults `QtVersion` to 5. The Zaod theme declared
+  `ConfigFile` under `[Desktop Entry]`, which SDDM never looks at, and said nothing
+  about Qt at all. The image ships only `/usr/bin/sddm-greeter-qt6`, so a theme
+  claiming Qt 5 had no greeter to run it and SDDM painted the fallback. The same
+  wrong section meant `theme.conf` was never read either.
+- Fix: `metadata.desktop` uses `[SddmGreeterTheme]` with `MainScript`,
+  `ConfigFile`, `Theme-Id`, `Theme-API=2.0` and `QtVersion=6`.
+- Verified inside the published iso-29 squashfs: the metadata above,
+  `sddm.conf.d/zaod.conf` still selecting `Current=zaod`, all four theme files
+  present, `/usr/bin/sddm-greeter-qt6` and the `SddmComponents` QML module shipped.
+- `tests/check_desktop_config.py` now asserts the section, the two file names and
+  `QtVersion=6`; reverting the key to 5 fails the check, so this cannot come back
+  quietly.
+- The `lint` gate is green again after six ruff findings in the wizard: both
+  scripts executable, `check=False` on the `chpasswd` run whose returncode is
+  inspected, `/etc/passwd` read through a context manager, and two string nits.
+  ruff 0.17.5 and shellcheck both clean, `pytest tests zaod/tests -q`: 199 passed.

@@ -172,6 +172,40 @@ def check_theme(report: Report) -> None:
     for symbol in ("sddm.login", "sddm.powerOff", "sddm.reboot", "passwordField"):
         report.check(symbol in main_qml, f"Main.qml uses {symbol}")
     report.check("userModel.lastUser" in main_qml, "Main.qml reads the last user")
+    check_theme_metadata(report, theme_dir)
+
+
+def check_theme_metadata(report: Report, theme_dir) -> None:
+    """The keys SDDM reads, in the section it reads them from.
+
+    ThemeMetadata parses [SddmGreeterTheme] and defaults QtVersion to 5. An image
+    that ships only /usr/bin/sddm-greeter-qt6 then has no greeter for the theme and
+    paints its own default screen instead, which is exactly how the Zaod login
+    screen once went missing. Declaring the keys under [Desktop Entry] looks right
+    in a diff and is silently ignored.
+    """
+    metadata = configparser.ConfigParser(interpolation=None)
+    metadata.optionxform = str
+    metadata.read_string(read_text(theme_dir / "metadata.desktop"))
+    report.check(
+        metadata.has_section("SddmGreeterTheme"),
+        "sddm theme metadata uses the [SddmGreeterTheme] section",
+    )
+    if not metadata.has_section("SddmGreeterTheme"):
+        return
+    section = metadata["SddmGreeterTheme"]
+    report.check(
+        section.get("ConfigFile", "") == "theme.conf",
+        "sddm theme metadata names theme.conf",
+    )
+    report.check(
+        section.get("MainScript", "") == "Main.qml",
+        "sddm theme metadata names Main.qml",
+    )
+    report.check(
+        section.get("QtVersion", "") == "6",
+        "sddm theme metadata declares the Qt the greeter is built against",
+    )
 
 
 def check_lite_mode_wiring(report: Report) -> None:
