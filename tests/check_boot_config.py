@@ -273,6 +273,8 @@ def check_boot_guard(report) -> None:
     report.contains(script, "zaod-oobe.service", "the watchdog leaves the onboarding wizard alone")
     report.contains(script, "graphical.target", "the watchdog waits for the desktop")
 
+    build = read(REPO_ROOT / "scripts/build-rootfs.sh")
+    report.contains(build, "zaod-boot-watchdog.service", "the watchdog is enabled in the image")
     # The image gets /etc from FILES_DIR only. Anything placed in a directory the
     # build never copies looks correct in the repo and is absent on the media -
     # which is exactly how iso-32's build died: it was told to enable a unit that
@@ -282,8 +284,6 @@ def check_boot_guard(report) -> None:
         'FILES_DIR="rootfs/files"',
         "the build copies rootfs/files into the image",
     )
-    build = read(REPO_ROOT / "scripts/build-rootfs.sh")
-    report.contains(build, "zaod-boot-watchdog.service", "the watchdog is enabled in the image")
 
 
 def main(argv=None) -> int:
