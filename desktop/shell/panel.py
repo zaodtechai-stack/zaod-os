@@ -57,14 +57,14 @@ window.zaod-panel {{
   background: {SURFACE};
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: {RADIUS}px;
-  padding: 4px 8px;
+  padding: 5px 10px;
 }}
 .zaod-bar button {{
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   color: {TEXT};
-  padding: 4px 8px;
+  padding: 6px 10px;
   box-shadow: none;
   text-shadow: none;
 }}
@@ -104,11 +104,11 @@ window.zaod-panel {{
   caret-color: {ACCENT};
 }}
 .zaod-tile {{
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
   color: {TEXT};
-  padding: 12px 8px;
+  padding: 14px 10px;
 }}
 .zaod-tile:hover {{
   background: rgba(0, 103, 192, 0.28);

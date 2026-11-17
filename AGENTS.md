@@ -643,3 +643,20 @@ default is zaod-night-pier.jpg, the SDDM background is the same image, and
 choice in ~/.config/zaod/wallpaper, which labwc's autostart reads. One image was
 a Marvel wallpaper and is deliberately not shipped.
 
+### 2026-11-18: store redesign, web apps, 8K wallpapers, studio, chromium
+
+* Store rewritten as a card grid (icons, summaries, category chips, search,
+  details pane) reading /usr/share/applications, so what it shows and what the
+  launcher shows cannot disagree. A missing index no longer hides the apps.
+* Built-in web apps: YouTube, WhatsApp, Instagram, Facebook, TikTok and X as
+  launcher entries (`zaod-webapp` opens them in a Chromium --app window), icons
+  from simple-icons, manifest in desktop/webapps/webapps.json.
+* Chromium is in packages.list, so those windows and a Chrome-engine browser are
+  both in the image; Firefox stays.
+* Zaod Studio ships: install-app-set.py no longer skips it.
+* Wallpapers are 7680x4320 (8K) with 480x270 thumbnails, and Control Center has
+  a wallpaper gallery that writes ~/.config/zaod/wallpaper and restarts swaybg.
+* Panel: larger hit targets and rounder chrome.
+* verify-rootfs-desktop.sh enforces the web apps, chromium, studio, thumbnails
+  and the full-size default wallpaper.
+

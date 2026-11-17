@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -15,10 +17,12 @@ from backend import ControlCenter, SettingError
 
 
 def build_window(center: ControlCenter | None = None):
-    from PySide6.QtCore import Qt
+    from PySide6.QtCore import QSize, Qt
+    from PySide6.QtGui import QIcon, QPixmap
     from PySide6.QtWidgets import (
         QCheckBox,
         QComboBox,
+        QGridLayout,
         QHBoxLayout,
         QLabel,
         QListWidget,
@@ -196,6 +200,82 @@ def build_window(center: ControlCenter | None = None):
 
         layout.addStretch(1)
         stack.addWidget(panel)
+
+
+    # ---- wallpapers ---------------------------------------------------------
+    # A gallery, not a file dialog: the nine built-in wallpapers are the choice,
+    # each shown as its own thumbnail, and the pick is remembered for next time.
+    navigation.addItem("Wallpapers")
+    wall_panel = QWidget()
+    wall_layout = QVBoxLayout(wall_panel)
+    wall_layout.setSpacing(12)
+    wall_note = QLabel("Pick a wallpaper. It stays after a restart.")
+    wall_note.setObjectName("muted")
+    wall_layout.addWidget(wall_note)
+
+    thumbs_host = QWidget()
+    thumbs_grid = QGridLayout(thumbs_host)
+    thumbs_grid.setSpacing(12)
+    thumbs_grid.setContentsMargins(0, 0, 0, 0)
+
+    choice_file = Path(os.environ.get("HOME", str(Path.home()))) / ".config" / "zaod" / "wallpaper"
+    try:
+        current_wallpaper = choice_file.read_text().strip()
+    except OSError:
+        current_wallpaper = ""
+
+    buttons: list[QPushButton] = []
+
+    def apply_wallpaper(slug: str, button: QPushButton) -> None:
+        image = f"/usr/share/wallpapers/zaod/collection/{slug}"
+        if not Path(image).is_file():
+            report(f"missing wallpaper {slug}", error=True)
+            return
+        try:
+            choice_file.parent.mkdir(parents=True, exist_ok=True)
+            choice_file.write_text(image + "\n")
+        except OSError as error:
+            report(f"could not save the choice: {error}", error=True)
+            return
+        for other in buttons:
+            other.setChecked(other is button)
+        subprocess.run(["pkill", "-x", "swaybg"], check=False, capture_output=True)
+        if os.environ.get("WAYLAND_DISPLAY"):
+            subprocess.Popen(
+                ["swaybg", "-i", image, "-m", "fill"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        report(f"wallpaper: {slug.removesuffix('.jpg').replace('zaod-', '').replace('-', ' ').title()}")
+
+    thumbs = sorted(Path("/usr/share/wallpapers/zaod/collection/thumbs").glob("*.jpg"))
+    for index, thumb in enumerate(thumbs):
+        slug = thumb.name
+        button = QPushButton()
+        button.setCheckable(True)
+        button.setChecked(current_wallpaper.endswith(slug))
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setFixedSize(QSize(236, 140))
+        button.setToolTip(slug.removesuffix(".jpg").replace("zaod-", "").replace("-", " ").title())
+        pixmap = QPixmap(str(thumb))
+        if not pixmap.isNull():
+            button.setIcon(
+                QIcon(
+                    pixmap.scaled(
+                        QSize(228, 124),
+                        Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+            )
+            button.setIconSize(QSize(228, 124))
+        button.clicked.connect(lambda _checked=False, slug=slug, button=button: apply_wallpaper(slug, button))
+        buttons.append(button)
+        thumbs_grid.addWidget(button, index // 3, index % 3)
+
+    wall_layout.addWidget(thumbs_host)
+    wall_layout.addStretch(1)
+    stack.addWidget(wall_panel)
 
     navigation.currentRowChanged.connect(stack.setCurrentIndex)
     navigation.setCurrentRow(0)

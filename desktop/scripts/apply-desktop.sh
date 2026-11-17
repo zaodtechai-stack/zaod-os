@@ -77,6 +77,8 @@ install_file "$DESKTOP_DIR/shell/panel.py" \
   "$TARGET_ROOT/usr/local/bin/zaod-panel" 0755
 install_file "$DESKTOP_DIR/shell/zaod-wallpaper" \
   "$TARGET_ROOT/usr/local/bin/zaod-wallpaper" 0755
+install_file "$DESKTOP_DIR/shell/zaod-webapp" \
+  "$TARGET_ROOT/usr/local/bin/zaod-webapp" 0755
 install_file "$DESKTOP_DIR/shell/labwc/rc.xml" "$TARGET_ROOT/etc/xdg/labwc/rc.xml" 0644
 install_file "$DESKTOP_DIR/shell/labwc/autostart" "$TARGET_ROOT/etc/xdg/labwc/autostart" 0644
 install_file "$DESKTOP_DIR/shell/labwc/menu.xml" "$TARGET_ROOT/etc/xdg/labwc/menu.xml" 0644

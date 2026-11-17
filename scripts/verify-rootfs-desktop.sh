@@ -113,6 +113,31 @@ else
 fi
 have /usr/share/sddm/themes/zaod/background.jpg
 
+# 3d. The built-in web apps, the browser they open in, and Studio.
+have /usr/share/zaod/webapps.json
+if as_root test -x "$TARGET_ROOT/usr/bin/chromium"; then
+  ok "chromium is installed"
+else
+  bad "chromium is missing, so the web apps cannot open"
+fi
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-webapp"; then
+  ok "zaod-webapp is installed"
+else
+  bad "zaod-webapp is missing"
+fi
+for webapp in youtube whatsapp instagram facebook tiktok x; do
+  have "/usr/share/applications/zaod-web-$webapp.desktop"
+done
+have /opt/zaod/apps/studio/payload/main.py
+
+# 3e. The wallpapers have to be the full-size ones plus thumbnails for the picker.
+thumbs=$(as_root find "$TARGET_ROOT/usr/share/wallpapers/zaod/collection/thumbs" \
+  -maxdepth 1 -name '*.jpg' 2>/dev/null | wc -l)
+if [ "$thumbs" -ge 9 ]; then ok "$thumbs wallpaper thumbnails"; else bad "only $thumbs wallpaper thumbnails"; fi
+big=$(as_root find "$TARGET_ROOT/usr/share/wallpapers/zaod/collection" -maxdepth 1 -name 'zaod-night-pier.jpg' \
+  -size +400k 2>/dev/null | wc -l)
+if [ "$big" -ge 1 ]; then ok "the default wallpaper is the full-size 8K file"; else bad "the default wallpaper is missing or small"; fi
+
 # 4. The session: entry file, launcher, panel, compositor and wallpaper.
 have /usr/share/wayland-sessions/zaod.desktop
 have /usr/local/bin/zaod-session

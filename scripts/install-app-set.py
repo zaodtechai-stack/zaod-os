@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SKIP = {"studio"}  # built by 'make studio', deliberately not part of the image
+SKIP: set[str] = set()  # every first-party app in apps/ belongs in the image
 
 
 def categories(manifest: dict) -> str:

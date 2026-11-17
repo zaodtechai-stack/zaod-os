@@ -181,6 +181,11 @@ as_root bash desktop/scripts/apply-desktop.sh --root "$ROOTFS_DIR"
 # this the session starts on an empty desktop: the launcher and the store both
 # read /usr/share/applications.
 as_root python3 scripts/install-app-set.py --root "$ROOTFS_DIR"
+# The built-in web apps: YouTube, WhatsApp, Instagram, Facebook, TikTok and X as
+# launcher entries that open in their own Chromium window.
+as_root python3 scripts/install-web-apps.py --root "$ROOTFS_DIR"
+as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod"
+as_root install -m 0644 desktop/webapps/webapps.json "$ROOTFS_DIR/usr/share/zaod/webapps.json"
 
 # The Zaod package system the Store and the `zaod` CLI read. Without
 # /usr/lib/zaod/zaodlib the store refuses to start at all ("zaodlib is not

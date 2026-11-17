@@ -1,0 +1,58 @@
+{
+  "apps": [
+    {
+      "id": "zaod-web-youtube",
+      "name": "YouTube",
+      "url": "https://www.youtube.com/",
+      "icon": "zaod-web-youtube",
+      "category": "Video",
+      "colour": "#FF0000",
+      "summary": "YouTube in its own window"
+    },
+    {
+      "id": "zaod-web-whatsapp",
+      "name": "WhatsApp",
+      "url": "https://web.whatsapp.com/",
+      "icon": "zaod-web-whatsapp",
+      "category": "Chat",
+      "colour": "#25D366",
+      "summary": "WhatsApp in its own window"
+    },
+    {
+      "id": "zaod-web-instagram",
+      "name": "Instagram",
+      "url": "https://www.instagram.com/",
+      "icon": "zaod-web-instagram",
+      "category": "Social",
+      "colour": "#E4405F",
+      "summary": "Instagram in its own window"
+    },
+    {
+      "id": "zaod-web-facebook",
+      "name": "Facebook",
+      "url": "https://www.facebook.com/",
+      "icon": "zaod-web-facebook",
+      "category": "Social",
+      "colour": "#1877F2",
+      "summary": "Facebook in its own window"
+    },
+    {
+      "id": "zaod-web-tiktok",
+      "name": "TikTok",
+      "url": "https://www.tiktok.com/",
+      "icon": "zaod-web-tiktok",
+      "category": "Video",
+      "colour": "#000000",
+      "summary": "TikTok in its own window"
+    },
+    {
+      "id": "zaod-web-x",
+      "name": "X",
+      "url": "https://x.com/",
+      "icon": "zaod-web-x",
+      "category": "Social",
+      "colour": "#0F1419",
+      "summary": "X in its own window"
+    }
+  ]
+}

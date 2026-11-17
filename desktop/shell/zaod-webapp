@@ -1,0 +1,23 @@
+#!/bin/sh
+# Open a web app in its own window: zaod-webapp URL [NAME]
+#
+# Chromium's --app mode gives a borderless window with no address bar, which is
+# what makes YouTube or WhatsApp feel installed rather than bookmarked. Firefox
+# is the fallback when Chromium is not present.
+set -eu
+
+[ $# -ge 1 ] || { echo "usage: zaod-webapp URL" >&2; exit 2; }
+url=$1
+
+for browser in /usr/bin/chromium /usr/bin/chromium-browser /usr/bin/google-chrome; do
+  if [ -x "$browser" ]; then
+    exec "$browser" --app="$url" --class=ZaodWebApp --window-size=1280,800
+  fi
+done
+
+if [ -x /usr/bin/firefox ]; then
+  exec /usr/bin/firefox --new-window "$url"
+fi
+
+echo "zaod-webapp: no browser is installed" >&2
+exit 1
