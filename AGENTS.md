@@ -522,3 +522,28 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   The button now paints through `background` (Rectangle) and `contentItem` (Text),
   and `tests/check_desktop_config.py::check_theme_qml` fails any `palette.<name>:`
   assignment in the theme, comments excluded.
+
+### 2026-11-17 (desktop): Plasma out, the Zaod desktop in
+
+- The user rejected Plasma/KDE outright and asked for the branded desktop, an app
+  store and a full app set. Plasma and KDE are gone from `rootfs/packages.list`
+  and `desktop/package-list.txt` (26 packages), together with the KDE skel/config
+  files, both Plasma session entries, `xdg-desktop-portal-kde` and
+  `polkit-kde-agent-1`; `tests/check_rootfs_config.py` fails if any of that
+  spelling comes back.
+- New `desktop/shell/`: `panel.py` (GTK3 panel on gtk-layer-shell, app grid built
+  from `/usr/share/applications`, pinned first-party apps, clock, volume, power),
+  `zaod-session` (exports the Zaod environment, execs labwc), `labwc/` (rc.xml,
+  autostart with swaybg + panel, menu.xml) and `themerc` for the window border in
+  Zaod colours. The session entry is `desktop/sessions/zaod.desktop`, and SDDM
+  starts `Session=zaod`.
+- The image was booting to an empty desktop because nothing installed the app set:
+  `scripts/install-app-set.py` now stages each app from `apps/` into
+  `/opt/zaod/apps/<slug>` with `/usr/share/applications/<id>.desktop` and its
+  icon, called from `scripts/build-rootfs.sh` right after the desktop layer
+  (12 apps: store, editor, notes, tasks, viewer, calculator, clock, converter,
+  monitor, control-center, oobe, hello).
+- `desktop/scripts/apply-desktop.sh` installs the shell instead of KDE configs;
+  `foot` (terminal) and `thunar` (file manager) replace konsole and dolphin, and
+  `check_desktop_config.py` now checks the session, the panel and the app set.
+

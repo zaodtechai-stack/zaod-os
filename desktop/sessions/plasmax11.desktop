@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Zaod Desktop (X11 fallback)
-Comment=Zaod OS Plasma 6 session on X11, used when Wayland is unavailable
-Exec=/usr/bin/startplasma-x11
-TryExec=/usr/bin/startplasma-x11
-DesktopNames=KDE
-X-KDE-PluginInfo-Name=plasmax11
-Keywords=x11;plasma;zaod;

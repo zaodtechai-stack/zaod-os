@@ -68,10 +68,11 @@ def check_package_list(report: Report) -> None:
         "wireplumber": "audio session",
         "mesa-vulkan-drivers": "graphics",
         "libinput10": "input",
-        "plasma-desktop": "desktop",
         "sddm": "login manager",
-        "kwin-wayland": "compositor",
-        "xdg-desktop-portal-kde": "portal",
+        "labwc": "compositor",
+        "foot": "terminal",
+        "thunar": "file manager",
+        "xdg-desktop-portal-gtk": "portal",
         "polkitd": "authorisation",
         "bubblewrap": "sandbox",
         "zram-tools": "memory",
@@ -85,6 +86,19 @@ def check_package_list(report: Report) -> None:
     }
     for name, purpose in required.items():
         report.check(name in packages, f"{purpose} package present: {name}")
+
+    # The desktop is Zaod's own: the shell is desktop/shell, the compositor is
+    # labwc and the apps are first-party or plain GTK. A Plasma/KDE package in
+    # this list either pulls a second desktop into the image or replaces the
+    # session that the Zaod panel runs in.
+    kde = {
+        name
+        for name in packages
+        if name.startswith(("plasma", "kwin", "kde-", "kf6-", "libkf6", "libkscreen", "kio"))
+        or name in {"dolphin", "konsole", "kwalletmanager", "kscreen", "powerdevil",
+                    "breeze-gtk-theme", "xdg-desktop-portal-kde", "polkit-kde-agent-1"}
+    }
+    report.check(not kde, "the desktop is Zaod's own, with no Plasma/KDE package", ", ".join(sorted(kde)))
 
     forbidden = {"apt", "aptitude", "dpkg", "synaptic", "packagekit", "gnome-software"}
     present = forbidden & set(packages)

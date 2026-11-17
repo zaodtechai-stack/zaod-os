@@ -174,6 +174,10 @@ as_root install -m 0440 "$FILES_DIR/etc/sudoers.d/zaod-desktop" "$ROOTFS_DIR/etc
 as_root chmod 0755 "$ROOTFS_DIR/etc/sudoers.d"
 as_root cp -a boot/plymouth "$ROOTFS_DIR/usr/share/plymouth/themes/zaod"
 as_root bash desktop/scripts/apply-desktop.sh --root "$ROOTFS_DIR"
+# The app set, with the .desktop entry for each app the image ships. Without
+# this the session starts on an empty desktop: the launcher and the store both
+# read /usr/share/applications.
+as_root python3 "$ROOT_DIR/scripts/install-app-set.py" --root "$ROOTFS_DIR"
 as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \
   "$ROOTFS_DIR/usr/share/wallpapers/zaod" \
   "$ROOTFS_DIR/usr/share/themes/Zaod"

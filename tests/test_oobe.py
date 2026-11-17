@@ -87,7 +87,7 @@ def test_timezone_matching_finds_a_city():
 
 def test_remembered_login_points_at_the_new_account():
     text = oobe.state_conf_text("hassan")
-    assert text == "[Last]\nSession=plasmawayland\nUser=hassan\n"
+    assert text == "[Last]\nSession=zaod\nUser=hassan\n"
 
 
 def test_check_mode_reports_onboarding_then_ready(tmp_path, capsys):

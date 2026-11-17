@@ -76,29 +76,24 @@ xwayland
 xserver-xorg-core
 
 ## desktop
-plasma-desktop
-plasma-workspace
-plasma-nm
-plasma-pa
 sddm
-kwin-wayland
-kwin-x11
-kscreen
-libkscreenlocker6
-kde-cli-tools
-kio
-kio-extras
-dolphin
-konsole
-kwalletmanager
-breeze-gtk-theme
 qt6-wayland
 qt6ct
 xdg-desktop-portal
-xdg-desktop-portal-kde
-polkit-kde-agent-1
-powerdevil
 upower
+labwc
+foot
+thunar
+gir1.2-gtk-3.0
+gir1.2-gtklayershell-0.1
+python3-gi-cairo
+xdg-desktop-portal-gtk
+polkitd-pkla
+wl-clipboard
+grim
+slurp
+swaybg
+xdg-user-dirs
 
 ## session helpers
 polkitd

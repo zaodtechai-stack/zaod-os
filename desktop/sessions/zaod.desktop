@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Zaod Desktop
+Comment=The Zaod desktop: branded panel, app launcher and app store
+Exec=/usr/local/bin/zaod-session
+TryExec=/usr/local/bin/zaod-session
+DesktopNames=Zaod
+Keywords=zaod;desktop;panel;

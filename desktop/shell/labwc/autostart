@@ -1,0 +1,5 @@
+# Zaod session startup. labwc sources this file once per session.
+# The compositor paints nothing on its own: the wallpaper is part of the desktop.
+/usr/bin/swaybg -i /usr/share/wallpapers/zaod/zaod-aurora-dark.svg -m fill &
+/usr/local/bin/zaod-panel &
+/usr/bin/gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || true

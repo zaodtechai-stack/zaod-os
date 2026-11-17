@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!-- Right-click on the desktop: the same app list the panel shows. -->
+<openbox_menu>
+  <menu id="root-menu" label="Zaod">
+    <item label="App store"><action name="Execute" command="org.zaod.store" /></item>
+    <item label="Files"><action name="Execute" command="org.zaod.files" /></item>
+    <item label="Settings"><action name="Execute" command="org.zaod.control-center" /></item>
+    <separator />
+    <item label="Lock"><action name="Execute" command="/usr/bin/labwc -k" /></item>
+    <item label="Shut down"><action name="Execute" command="/usr/bin/systemctl poweroff" /></item>
+  </menu>
+</openbox_menu>

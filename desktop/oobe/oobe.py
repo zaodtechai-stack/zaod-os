@@ -224,7 +224,7 @@ def create_account(username: str, full_name: str, password: str) -> None:
         raise RuntimeError(changer.stderr.strip() or "chpasswd failed")
 
 
-def state_conf_text(username: str, session: str = "plasmawayland") -> str:
+def state_conf_text(username: str, session: str = "zaod") -> str:
     """SDDM's remembered-account file, so the login box opens on the new name."""
     return f"[Last]\nSession={session}\nUser={username}\n"
 

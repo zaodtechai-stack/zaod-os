@@ -42,6 +42,10 @@ class Report:
         if not condition:
             self.failures.append(f"{label}{(': ' + detail) if detail else ''}")
 
+    def contains(self, text: str, needle: str, label: str) -> None:
+        """A file has to carry this line for the desktop to work."""
+        self.check(needle in text, label, needle)
+
 
 TEXT_SUFFIXES = {"", ".conf", ".sh", ".py", ".desktop", ".service", ".list", ".svg", ".qml", ".txt"}
 
@@ -94,7 +98,11 @@ def check_session_entries(report: Report) -> None:
         for key in ASCII_DESKTOP_KEYS:
             report.check(bool(entry.get(key)), f"{path.name} defines {key}")
         exec_value = entry.get("Exec", "")
-        report.check(exec_value.startswith("/usr/bin/"), f"{path.name} Exec is an absolute binary", exec_value)
+        report.check(
+            exec_value.startswith(("/usr/bin/", "/usr/local/bin/")),
+            f"{path.name} Exec is an absolute binary",
+            exec_value,
+        )
         report.check(
             entry.get("Type") == "Application", f"{path.name} Type is Application", entry.get("Type", "")
         )
@@ -174,6 +182,7 @@ def check_theme(report: Report) -> None:
     report.check("userModel.lastUser" in main_qml, "Main.qml reads the last user")
     check_theme_metadata(report, theme_dir)
     check_theme_qml(report, theme_dir)
+    check_zaod_session(report)
 
 
 def check_theme_metadata(report: Report, theme_dir) -> None:
@@ -239,6 +248,75 @@ def check_theme_qml(report: Report, theme_dir) -> None:
     )
 
 
+def check_zaod_session(report: Report) -> None:
+    """The desktop is Zaod's own: no Plasma, no KDE, no third-party shell.
+
+    The session entry is what the login screen starts, so it is the one place
+    where a leftover desktop can quietly come back. It has to point at the Zaod
+    script, that script has to start labwc, the panel has to be installed as an
+    executable, and no Plasma/KDE session may be shipped alongside it.
+    """
+    session = (DESKTOP / "sessions" / "zaod.desktop").read_text()
+    report.contains(session, "Exec=/usr/local/bin/zaod-session", "the session starts the Zaod desktop")
+    report.check("DesktopNames=Zaod" in session, "the session names the Zaod desktop")
+    for stray in (DESKTOP / "sessions").glob("plasma*.desktop"):
+        report.check(False, f"no Plasma session entry ships: {stray.name}")
+
+    script = (DESKTOP / "shell" / "zaod-session").read_text()
+    report.contains(script, "exec /usr/bin/labwc", "the compositor is labwc")
+    report.contains(script, "XDG_CURRENT_DESKTOP=Zaod", "the session says which desktop it is")
+
+    installer = (DESKTOP / "scripts" / "apply-desktop.sh").read_text()
+    for needle, why in (
+        ("$DESKTOP_DIR/shell/panel.py", "the panel is installed"),
+        ("$DESKTOP_DIR/shell/zaod-session", "the session script is installed"),
+        ("$DESKTOP_DIR/sessions/zaod.desktop", "the session entry is installed"),
+        ("etc/xdg/labwc/autostart", "the panel starts with the compositor"),
+    ):
+        report.contains(installer, needle, why)
+
+    panel = (DESKTOP / "shell" / "panel.py").read_text()
+    report.contains(panel, "org.zaod.store", "the panel launches the app store")
+    report.contains(panel, "Gio.AppInfo", "the launcher lists installed apps instead of a hard-coded menu")
+    report.check(
+        all(not line.strip().startswith("import PyQt") for line in panel.splitlines()),
+        "the panel draws with GTK, which the image already ships",
+    )
+
+
+def check_app_set(report: Report, tmp_root) -> None:
+    """Every first-party app reaches the launcher, through a .desktop entry.
+
+    An image that boots to an empty desktop is what this replaces: the panel and
+    the store both read /usr/share/applications, so the app set has to be staged
+    with entries before the rootfs is squashed.
+    """
+    entry = REPO_ROOT / "scripts" / "install-app-set.py"
+    report.check(entry.is_file(), "the app set installer is part of the build")
+    if not entry.is_file():
+        return
+    root = tmp_root / "rootfs-app-set"
+    (root / "etc").mkdir(parents=True, exist_ok=True)
+    import subprocess
+
+    result = subprocess.run(
+        [sys.executable, str(entry), "--root", str(root)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    report.check(result.returncode == 0, "the app set installs into a root filesystem", result.stderr[-300:])
+    entries = sorted(p.name for p in (root / "usr/share/applications").glob("*.desktop"))
+    for app_id in ("org.zaod.store", "org.zaod.editor", "org.zaod.notes", "org.zaod.control-center"):
+        report.check(f"{app_id}.desktop" in entries, f"the launcher gets an entry for {app_id}")
+    store_entry = root / "usr/share/applications" / "org.zaod.store.desktop"
+    report.check(store_entry.is_file(), "the app store is installed")
+    if store_entry.is_file():
+        report.contains(store_entry.read_text(), "Icon=org.zaod.store", "the store entry carries its icon")
+    build = (REPO_ROOT / "scripts" / "build-rootfs.sh").read_text()
+    report.contains(build, "install-app-set.py", "the image build installs the app set")
+
+
 def check_lite_mode_wiring(report: Report) -> None:
     unit = (DESKTOP / "systemd" / "zaod-lite-mode.service").read_text()
     report.check("Before=display-manager.service" in unit, "lite mode runs before the display manager")
@@ -273,6 +351,10 @@ def main() -> int:
     check_theme(report)
     check_lite_mode_wiring(report)
     check_mimeapps(report)
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        check_app_set(report, Path(tmp))
 
     print(f"desktop config checks: {report.checks} run, {len(report.failures)} failed")
     for failure in report.failures:

@@ -1,0 +1,11 @@
+# labwc window decorations, in Zaod colours.
+window.active.title.bg.color: #1B1D21
+window.active.label.text.color: #F6F7F9
+window.inactive.title.bg.color: #14161A
+window.inactive.label.text.color: #9AA3AD
+window.active.border.color: #2A2E35
+window.inactive.border.color: #20242A
+window.active.button.unpressed.bg.color: #1B1D21
+border.width: 1
+padding.width: 4
+padding.height: 4

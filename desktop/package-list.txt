@@ -1,30 +1,10 @@
 # Plasma 6 packages installed into the Zaod rootfs for the Phase 5 session.
 # Kept intentionally small: no KDE PIM, no games, no development tooling.
 # Every entry must exist in Debian 13 (trixie) main.
-plasma-desktop
-plasma-workspace
-plasma-workspace-wayland
-plasma-session-wayland
-plasma-nm
-plasma-pa
-plasma-discover
-plasma-systemmonitor
-plasma-browser-integration
-kwin-wayland
-kwin-x11
-kscreen
-kscreenlocker
 ksshaskpass
-polkit-kde-agent-1
 sddm
 sddm-theme-debian-maui
-xdg-desktop-portal-kde
-kde-config-screenlocker
-kde-config-upower
-kde-style-breeze
 breeze-icon-theme
-dolphin
-konsole
 kate
 ark
 gwenview

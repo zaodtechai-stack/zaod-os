@@ -60,22 +60,26 @@ install_file() {
 printf 'apply-desktop: installing into %s\n' "$TARGET_ROOT"
 
 # Per-user defaults applied to new accounts.
-for f in kdeglobals kwinrc kscreenlockerrc powermanagementprofilesrc kcminputrc \
-         ksplashrc baloofilerc plasma-org.kde.plasma.desktop-appletsrc; do
-  install_file "$DESKTOP_DIR/config/$f" "$TARGET_ROOT/etc/skel/.config/$f" 0644
-done
 install_file "$DESKTOP_DIR/config/mimeapps.list" "$TARGET_ROOT/etc/skel/.config/mimeapps.list" 0644
 
 # System-wide defaults, so the live session and root session look identical.
-for f in kdeglobals kwinrc mimeapps.list; do
-  install_file "$DESKTOP_DIR/config/$f" "$TARGET_ROOT/etc/xdg/$f" 0644
-done
+install_file "$DESKTOP_DIR/config/mimeapps.list" "$TARGET_ROOT/etc/xdg/mimeapps.list" 0644
 
-# Session entries.
-install_file "$DESKTOP_DIR/sessions/plasmawayland.desktop" \
-  "$TARGET_ROOT/usr/share/wayland-sessions/plasmawayland.desktop" 0644
-install_file "$DESKTOP_DIR/sessions/plasmax11.desktop" \
-  "$TARGET_ROOT/usr/share/xsessions/plasmax11.desktop" 0644
+# The Zaod desktop. There is no Plasma and no KDE in this image: labwc is the
+# compositor and zaod-panel is the desktop, so the session entry points at the
+# Zaod script and nothing else. A leftover Plasma session entry would put a
+# desktop on the login screen that this image cannot start.
+install_file "$DESKTOP_DIR/sessions/zaod.desktop" \
+  "$TARGET_ROOT/usr/share/wayland-sessions/zaod.desktop" 0644
+install_file "$DESKTOP_DIR/shell/zaod-session" \
+  "$TARGET_ROOT/usr/local/bin/zaod-session" 0755
+install_file "$DESKTOP_DIR/shell/panel.py" \
+  "$TARGET_ROOT/usr/local/bin/zaod-panel" 0755
+install_file "$DESKTOP_DIR/shell/labwc/rc.xml" "$TARGET_ROOT/etc/xdg/labwc/rc.xml" 0644
+install_file "$DESKTOP_DIR/shell/labwc/autostart" "$TARGET_ROOT/etc/xdg/labwc/autostart" 0644
+install_file "$DESKTOP_DIR/shell/labwc/menu.xml" "$TARGET_ROOT/etc/xdg/labwc/menu.xml" 0644
+install_file "$DESKTOP_DIR/shell/themerc" \
+  "$TARGET_ROOT/usr/share/themes/Zaod/openbox-3/themerc" 0644
 
 # SDDM configuration and the Zaod theme.
 install_file "$DESKTOP_DIR/sddm/sddm.conf.d/zaod.conf" \

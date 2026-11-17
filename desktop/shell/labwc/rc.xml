@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!-- labwc: the compositor under the Zaod desktop. Window management only. -->
+<labwc_config>
+  <core>
+    <gap>0</gap>
+    <adaptiveSync>no</adaptiveSync>
+    <allowTearing>yes</allowTearing>
+    <reuseOutputMode>yes</reuseOutputMode>
+  </core>
+  <theme>
+    <name>Zaod</name>
+    <cornerRadius>8</cornerRadius>
+    <font place="ActiveWindow"><name>Inter</name><size>10</size><weight>bold</weight></font>
+    <font place="InactiveWindow"><name>Inter</name><size>10</size></font>
+    <font place="MenuItem"><name>Inter</name><size>10</size></font>
+    <font place="OnScreenDisplay"><name>Inter</name><size>12</size></font>
+  </theme>
+  <keyboard>
+    <default />
+    <keybind key="A-Return"><action name="Execute" command="org.zaod.terminal"/></keybind>
+    <keybind key="W-d"><action name="Execute" command="org.zaod.store"/></keybind>
+    <keybind key="W-e"><action name="Execute" command="org.zaod.files"/></keybind>
+    <keybind key="Print"><action name="Execute" command="zaod-screenshot" /></keybind>
+    <keybind key="W-q"><action name="Close" /></keybind>
+    <keybind key="W-Tab"><action name="NextWindow" /></keybind>
+  </keyboard>
+  <mouse>
+    <default />
+    <context name="Frame">
+      <mousebind button="Left" action="Press"><action name="Focus" /></mousebind>
+    </context>
+  </mouse>
+</labwc_config>
