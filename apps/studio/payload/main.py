@@ -9,9 +9,19 @@ from pathlib import Path
 from typing import ClassVar
 
 HERE = Path(__file__).resolve().parent
-for candidate in (HERE, HERE / "lib", HERE.parents[2] / "studio" if len(HERE.parents) > 2 else HERE):
-    if candidate.is_dir() and str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
+# zaodstudio packages projects with zaodlib, which a Zaod system keeps in
+# /usr/lib/zaod (see the zaod CLI). Without this candidate every build in Studio
+# fails with "No module named 'zaodlib'".
+_CANDIDATES = [
+    os.environ.get("ZAOD_LIB"),
+    str(HERE),
+    str(HERE / "lib"),
+    str(HERE.parents[2] / "studio") if len(HERE.parents) > 2 else str(HERE),
+    "/usr/lib/zaod",
+]
+for candidate in _CANDIDATES:
+    if candidate and Path(candidate).is_dir() and candidate not in sys.path:
+        sys.path.insert(0, candidate)
 
 import zaodapp
 from zaodstudio import (

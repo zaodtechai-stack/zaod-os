@@ -19,6 +19,11 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+
+# Modules an app needs that live outside its own payload directory. Studio keeps
+# its toolkit in studio/zaodstudio at the top of the tree, so a payload copied on
+# its own cannot import it and the app dies with ModuleNotFoundError.
+EXTRA_MODULES = {"studio": [REPO / "studio" / "zaodstudio"]}
 SKIP: set[str] = set()  # every first-party app in apps/ belongs in the image
 
 
@@ -63,6 +68,9 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
         if shared_lib.is_dir():
             for module in sorted(shared_lib.glob("*.py")):
                 shutil.copy2(module, target / "payload/lib" / module.name)
+        for extra in EXTRA_MODULES.get(app.name, []):
+            if extra.is_dir():
+                shutil.copytree(extra, target / "payload" / extra.name)
         shutil.copy2(manifest_path, target / "MANIFEST.json")
         icon = app / "icon.svg"
         icon_target = root / "usr/share/icons/hicolor/scalable/apps" / f"{app_id}.svg"

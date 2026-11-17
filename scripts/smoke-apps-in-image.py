@@ -108,9 +108,13 @@ def check_one(main_py: Path, name: str) -> int:
         height = window.height() or window.sizeHint().height()
         if width <= 0 or height <= 0:
             raise RuntimeError("window has no size")
-        print(f"{width}x{height}")
+        print(f"{width}x{height}", flush=True)
         app.processEvents()
-        return 0
+        # Qt sometimes aborts while tearing down the offscreen application
+        # ("QObject: shared QObject was deleted directly"); the window itself was
+        # built, which is what this check is about.
+        sys.stdout.flush()
+        os._exit(0)
     except Exception:  # noqa: BLE001 - any failure is the point of the check
         traceback.print_exc()
         return 1

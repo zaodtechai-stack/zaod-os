@@ -113,3 +113,17 @@ def test_no_payload_depends_on_a_module_that_is_not_shared() -> None:
             name = stripped.split()[1].split(".")[0]
             if name.startswith("zaod"):
                 assert name in shared, f"zaodapp imports {name}, which apps/lib does not ship"
+
+
+def test_studio_ships_with_the_library_it_imports() -> None:
+    """Studio packages projects with zaodlib and its own toolkit.
+
+    The payload alone cannot import either: zaodstudio lives at the top of the
+    tree and zaodlib is installed to /usr/lib/zaod, so both had to be wired
+    explicitly or every Studio build fails with ModuleNotFoundError.
+    """
+    installer = load_installer()
+    assert "studio" in installer.EXTRA_MODULES
+    assert any(p.name == "zaodstudio" for p in installer.EXTRA_MODULES["studio"])
+    main_py = (REPO / "apps" / "studio" / "payload" / "main.py").read_text()
+    assert "/usr/lib/zaod" in main_py
