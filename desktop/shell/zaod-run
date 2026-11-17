@@ -1,0 +1,78 @@
+#!/bin/sh
+# Run a Zaod app with a log and a visible error, instead of failing silently.
+#
+# Usage: zaod-run APP-ID [COMMAND...]
+#
+# A launcher that "does nothing" is the worst possible failure: there is no
+# window, no message and nothing to report. This wrapper gives every failure a
+# name - the app id, a log under ~/.zaod/logs, and a dialog with the last lines
+# when the app dies before it stays up.
+set -u
+
+[ $# -ge 1 ] || { echo "usage: zaod-run APP-ID [COMMAND...]" >&2; exit 2; }
+app_id=$1
+shift
+
+LOG_DIR="${HOME:-/tmp}/.zaod/logs"
+mkdir -p "$LOG_DIR" 2>/dev/null || LOG_DIR=/tmp
+LOG="$LOG_DIR/$app_id.log"
+
+# The session exports these, but a launcher may be started from anywhere (a
+# terminal, a store card), so fill in what Qt needs to reach the compositor.
+if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -d "${XDG_RUNTIME_DIR:-}" ]; then
+  XDG_RUNTIME_DIR="/run/user/$(id -u)"
+  if [ -d "$XDG_RUNTIME_DIR" ]; then export XDG_RUNTIME_DIR; else unset XDG_RUNTIME_DIR; fi
+fi
+: "${XDG_SESSION_TYPE:=wayland}"
+export XDG_SESSION_TYPE
+if [ "$XDG_SESSION_TYPE" = wayland ] && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  : "${QT_QPA_PLATFORM:=wayland}"
+  export QT_QPA_PLATFORM
+fi
+: "${ZAOD_THEME:=dark}"
+export ZAOD_THEME
+
+{
+  printf '=== %s %s ===\n' "$app_id" "$(date -Is 2>/dev/null || date)"
+  printf 'display=%s wayland=%s platform=%s runtime=%s\n' \
+    "${DISPLAY:-}" "${WAYLAND_DISPLAY:-}" "${QT_QPA_PLATFORM:-}" "${XDG_RUNTIME_DIR:-}"
+} >> "$LOG" 2>&1
+
+"$@" >> "$LOG" 2>&1 &
+child=$!
+
+# An app that is still alive after two seconds has its window up: leave it alone.
+sleep 2
+if kill -0 "$child" 2>/dev/null; then
+  wait "$child" 2>/dev/null
+  exit 0
+fi
+
+wait "$child" 2>/dev/null
+status=$?
+tail_out=$(tail -n 12 "$LOG" 2>/dev/null)
+
+if command -v zenity >/dev/null 2>&1; then
+  zenity --error --width=460 --title="${app_id} could not start" \
+    --text="The app stopped with status $status.\n\n$tail_out\n\nLog: $LOG" 2>/dev/null &
+elif command -v gtk-launch >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+  python3 - "$app_id" "$status" "$tail_out" <<'PY' 2>/dev/null &
+import sys
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
+app_id, status, detail = sys.argv[1], sys.argv[2], sys.argv[3]
+dialog = Gtk.MessageDialog(
+    message_type=Gtk.MessageType.ERROR,
+    buttons=Gtk.ButtonsType.CLOSE,
+    text=f"{app_id} could not start (status {status})",
+)
+dialog.format_secondary_text(detail)
+dialog.connect("response", lambda *_: Gtk.main_quit())
+dialog.show_all()
+Gtk.main()
+PY
+fi
+
+exit "$status"

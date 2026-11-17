@@ -201,6 +201,8 @@ as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \
   "$ROOTFS_DIR/usr/share/themes/Zaod"
 as_root cp -a desktop/design/. "$ROOTFS_DIR/usr/share/zaod/design/"
 as_root cp -a desktop/design/wallpapers/. "$ROOTFS_DIR/usr/share/wallpapers/zaod/"
+as_root install -D -m 0644 desktop/design/wallpapers/collection/README.md \
+  "$ROOTFS_DIR/usr/share/doc/zaod/wallpaper-credits.md"
 as_root cp -a desktop/design/gtk/. "$ROOTFS_DIR/usr/share/themes/Zaod/"
 
 # The default user template is a skel the installer copies, not a login.
@@ -293,6 +295,15 @@ if ! as_root chroot "$ROOTFS_DIR" env QT_QPA_PLATFORM=offscreen /usr/bin/python3
     || fail "an app cannot open its window inside the image"
 fi
 as_root rm -f "$ROOTFS_DIR/tmp/smoke-apps.py"
+
+# The offscreen check says an app builds a window; this says it opens on the
+# Wayland compositor the session actually runs.
+as_root install -m 0755 scripts/test-apps-wayland.sh "$ROOTFS_DIR/tmp/test-apps-wayland.sh"
+say "proving every app opens its window on wayland"
+if ! as_root chroot "$ROOTFS_DIR" env HOME=/root /bin/bash /tmp/test-apps-wayland.sh; then
+  fail "an app does not run on the wayland session"
+fi
+as_root rm -f "$ROOTFS_DIR/tmp/test-apps-wayland.sh"
 
 say "verifying the desktop in the image"
 bash scripts/verify-rootfs-desktop.sh --root "$ROOTFS_DIR"

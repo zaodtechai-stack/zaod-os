@@ -105,7 +105,8 @@ if [ "$count" -ge 9 ]; then
 else
   bad "only $count built-in wallpapers in /usr/share/wallpapers/zaod/collection (want 9)"
 fi
-have /usr/share/wallpapers/zaod/collection/zaod-night-pier.jpg
+have /usr/share/wallpapers/zaod/collection/zaod-lake-louise.jpg
+have /usr/share/doc/zaod/wallpaper-credits.md
 if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-wallpaper"; then
   ok "zaod-wallpaper is installed"
 else
@@ -134,7 +135,7 @@ have /opt/zaod/apps/studio/payload/main.py
 thumbs=$(as_root find "$TARGET_ROOT/usr/share/wallpapers/zaod/collection/thumbs" \
   -maxdepth 1 -name '*.jpg' 2>/dev/null | wc -l)
 if [ "$thumbs" -ge 9 ]; then ok "$thumbs wallpaper thumbnails"; else bad "only $thumbs wallpaper thumbnails"; fi
-big=$(as_root find "$TARGET_ROOT/usr/share/wallpapers/zaod/collection" -maxdepth 1 -name 'zaod-night-pier.jpg' \
+big=$(as_root find "$TARGET_ROOT/usr/share/wallpapers/zaod/collection" -maxdepth 1 -name 'zaod-lake-louise.jpg' \
   -size +400k 2>/dev/null | wc -l)
 if [ "$big" -ge 1 ]; then ok "the default wallpaper is the full-size 8K file"; else bad "the default wallpaper is missing or small"; fi
 
@@ -173,8 +174,9 @@ while IFS= read -r entry; do
     done
     program="${resolved:-$program}"
   fi
-  if [[ "$program" == /usr/bin/python3 ]]; then
-    script="$(printf '%s\n' "$exec_line" | awk '{print $2}')"
+  if [[ "$program" == /usr/bin/python3 || "$program" == /usr/local/bin/zaod-run ]]; then
+    # zaod-run APP-ID python3 SCRIPT: the last field is the script.
+    script="$(printf '%s\n' "$exec_line" | awk '{print $NF}')"
     if as_root test -f "$TARGET_ROOT$script"; then ok "$entry -> $script"; else bad "$entry runs $script, which is not in the image"; fi
   elif as_root test -x "$TARGET_ROOT$program"; then
     ok "$entry -> $program"

@@ -55,7 +55,7 @@ def test_launcher_exec_uses_the_image_path(tmp_path: Path) -> None:
 
     assert installed == ["org.zaod.notes"]
     entry = (root / "usr/share/applications/org.zaod.notes.desktop").read_text()
-    assert "Exec=/usr/bin/python3 /opt/zaod/apps/notes/payload/main.py" in entry
+    assert "Exec=/usr/local/bin/zaod-run org.zaod.notes /usr/bin/python3 /opt/zaod/apps/notes/payload/main.py" in entry
     # The build host's path must never appear in a launcher.
     assert str(tmp_path) not in entry
     assert (root / "opt/zaod/apps/notes/payload/main.py").is_file()

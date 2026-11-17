@@ -3,7 +3,7 @@
 # The wallpaper is whatever the person picked, otherwise the default from the
 # built-in collection. Both are PNG/JPEG, so no SVG loader is involved.
 WALLPAPER="$(cat "$HOME/.config/zaod/wallpaper" 2>/dev/null || true)"
-[ -n "$WALLPAPER" ] || WALLPAPER=/usr/share/wallpapers/zaod/collection/zaod-night-pier.jpg
+[ -n "$WALLPAPER" ] || WALLPAPER=/usr/share/wallpapers/zaod/collection/zaod-lake-louise.jpg
 [ -f "$WALLPAPER" ] || WALLPAPER=/usr/share/wallpapers/zaod/zaod-aurora-dark.png
 /usr/bin/swaybg -i "$WALLPAPER" -m fill &
 /usr/local/bin/zaod-panel &

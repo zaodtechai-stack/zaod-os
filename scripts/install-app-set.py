@@ -85,7 +85,7 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
             "Type=Application\n"
             f"Name={manifest.get('name', slug)}\n"
             f"Comment={manifest.get('summary', '')}\n"
-            f"Exec=/usr/bin/python3 {image_dir}/payload/{Path(exe).name}\n"
+            f"Exec=/usr/local/bin/zaod-run {app_id} /usr/bin/python3 {image_dir}/payload/{Path(exe).name}\n"
             f"Icon={app_id}\n"
             "Terminal=false\n"
             f"Categories={categories(manifest)}\n"
