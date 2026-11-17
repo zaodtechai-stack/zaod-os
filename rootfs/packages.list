@@ -79,6 +79,12 @@ xserver-xorg-core
 sddm
 qt6-wayland
 qt6ct
+qml6-module-qtquick
+qml6-module-qtquick-controls
+qml6-module-qtquick-layouts
+qml6-module-qtquick-templates
+qml6-module-qtquick-window
+qml6-module-qtqml-workerscript
 xdg-desktop-portal
 upower
 labwc

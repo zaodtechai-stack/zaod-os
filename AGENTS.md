@@ -547,3 +547,13 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   `foot` (terminal) and `thunar` (file manager) replace konsole and dolphin, and
   `check_desktop_config.py` now checks the session, the panel and the app set.
 
+### 2026-11-17 (fix): the login theme could not load
+
+First real-hardware boot of iso-41 stopped on SDDM with "The current theme cannot
+be loaded ... module \"QtQuick.Layouts\" is not installed". Removing Plasma also
+removed the QtQuick QML modules it had pulled in as dependencies. `qml6-module-
+qtquick`, `-qtquick-controls`, `-qtquick-layouts`, `-qtquick-templates`,
+`-qtquick-window` and `-qtqml-workerscript` are now in `rootfs/packages.list`, and
+`check_desktop_config.py::check_login_theme_modules` reads every `import` in the
+theme's QML and requires the matching package, so this cannot regress.
+

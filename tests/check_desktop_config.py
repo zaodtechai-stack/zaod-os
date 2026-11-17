@@ -183,6 +183,7 @@ def check_theme(report: Report) -> None:
     check_theme_metadata(report, theme_dir)
     check_theme_qml(report, theme_dir)
     check_zaod_session(report)
+    check_login_theme_modules(report)
 
 
 def check_theme_metadata(report: Report, theme_dir) -> None:
@@ -315,6 +316,51 @@ def check_app_set(report: Report, tmp_root) -> None:
         report.contains(store_entry.read_text(), "Icon=org.zaod.store", "the store entry carries its icon")
     build = (REPO_ROOT / "scripts" / "build-rootfs.sh").read_text()
     report.contains(build, "install-app-set.py", "the image build installs the app set")
+
+
+QML_MODULE_PACKAGES = {
+    "QtQuick": "qml6-module-qtquick",
+    "QtQuick.Window": "qml6-module-qtquick-window",
+    "QtQuick.Controls": "qml6-module-qtquick-controls",
+    "QtQuick.Templates": "qml6-module-qtquick-templates",
+    "QtQuick.Layouts": "qml6-module-qtquick-layouts",
+    "QtQuick.Shapes": "qml6-module-qtquick-shapes",
+    "QtQml": "qml6-module-qtqml",
+    "QtQml.Models": "qml6-module-qtqml-models",
+}
+
+
+def check_login_theme_modules(report: Report) -> None:
+    """The login theme's QtQuick imports have to be installed in the image.
+
+    QtQuick is split into per-module Debian packages. While the image carried
+    Plasma those modules arrived as dependencies; on their own the greeter shows
+    "module \"QtQuick.Layouts\" is not installed" and refuses the theme, which is
+    what a person sees instead of their login screen.
+    """
+    packages = {
+        line.strip()
+        for line in (REPO_ROOT / "rootfs" / "packages.list").read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    theme_files = sorted((DESKTOP / "sddm" / "themes" / "zaod").glob("*.qml"))
+    report.check(bool(theme_files), "the login theme has QML to check")
+    imported = set()
+    for path in theme_files:
+        for line in read_text(path).splitlines():
+            line = line.strip()
+            if not line.startswith("import "):
+                continue
+            module = line.split()[1]
+            if module in QML_MODULE_PACKAGES:
+                imported.add(module)
+    report.check(bool(imported), "the login theme imports QtQuick modules")
+    for module in sorted(imported):
+        package = QML_MODULE_PACKAGES[module]
+        report.check(
+            package in packages,
+            f"the image installs {package} for the login theme's {module} import",
+        )
 
 
 def check_lite_mode_wiring(report: Report) -> None:
