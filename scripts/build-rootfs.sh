@@ -299,11 +299,12 @@ as_root rm -f "$ROOTFS_DIR/tmp/smoke-apps.py"
 # The offscreen check says an app builds a window; this says it opens on the
 # Wayland compositor the session actually runs.
 as_root install -m 0755 scripts/test-apps-wayland.sh "$ROOTFS_DIR/tmp/test-apps-wayland.sh"
+as_root install -m 0755 scripts/gio-launch-entry.py "$ROOTFS_DIR/tmp/gio-launch-entry.py"
 say "proving every app opens its window on wayland"
 if ! as_root chroot "$ROOTFS_DIR" env HOME=/root /bin/bash /tmp/test-apps-wayland.sh; then
   fail "an app does not run on the wayland session"
 fi
-as_root rm -f "$ROOTFS_DIR/tmp/test-apps-wayland.sh"
+as_root rm -f "$ROOTFS_DIR/tmp/test-apps-wayland.sh" "$ROOTFS_DIR/tmp/gio-launch-entry.py"
 
 say "verifying the desktop in the image"
 bash scripts/verify-rootfs-desktop.sh --root "$ROOTFS_DIR"

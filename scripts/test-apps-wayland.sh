@@ -4,9 +4,11 @@
 # Run inside the built root filesystem: /usr/local/lib/zaod/test-apps-wayland.sh
 #
 # The offscreen smoke test proves an app imports and builds its window; it says
-# nothing about the platform plugin the session actually uses. This starts a
-# headless labwc (the same compositor the session runs), then launches each app
-# with WAYLAND_DISPLAY pointing at it and fails if one exits before it settles.
+# nothing about the platform plugin the session actually uses, nor about the way
+# the panel starts an app (Gio.AppInfo.launch). This starts a headless labwc - the
+# same compositor the session runs - then launches each app with WAYLAND_DISPLAY
+# pointing at it, and finally starts one entry through Gio, failing if an app
+# exits before it settles.
 set -uo pipefail
 
 APPS_DIR=${APPS_DIR:-/opt/zaod/apps}
@@ -47,8 +49,8 @@ if [ -z "$socket" ]; then
   sed -n '1,20p' "$labwc_log" | sed 's/^/    /'
   exit 0
 fi
-export WAYLAND_DISPLAY
 WAYLAND_DISPLAY=$(basename "$socket")
+export WAYLAND_DISPLAY
 export QT_QPA_PLATFORM=wayland
 echo "  compositor up on $WAYLAND_DISPLAY"
 
@@ -79,27 +81,27 @@ for app_dir in "$APPS_DIR"/*/; do
   sleep 0.5
 done
 
-# The panel does not run the app binary itself: it asks Gio to launch the
-# .desktop entry, exactly like a click on an icon. That path (Gio + Exec +
-# zaod-run) is what the person actually uses, so it is checked on its own.
-launch_entry=/usr/share/applications/org.zaod.notes.desktop
-if [ -f "$launch_entry" ] && command -v /usr/bin/gio >/dev/null 2>&1; then
+# A click on a launcher icon goes through Gio, not through the binary, so that
+# path is checked separately: the app has to come up from its .desktop entry.
+if [ -f /usr/share/applications/org.zaod.notes.desktop ] && [ -x /usr/bin/python3 ]; then
   checked=$((checked + 1))
-  /usr/bin/gio launch "$launch_entry" >"$RUNTIME/gio-launch.log" 2>&1
+  gio_log="$RUNTIME/gio-launch.log"
+  /usr/bin/python3 /tmp/gio-launch-entry.py org.zaod.notes.desktop >"$gio_log" 2>&1
+  launched=$?
   sleep "$SETTLE"
-  if pgrep -f "org.zaod.notes|/opt/zaod/apps/notes/payload/main.py" >/dev/null 2>&1; then
-    echo "  ok   a launcher entry starts its app through gio"
+  if [ "$launched" -eq 0 ] && pgrep -f "/opt/zaod/apps/notes/payload/main.py" >/dev/null 2>&1; then
+    echo "  ok   a launcher entry starts its app through Gio.AppInfo"
     pkill -f "/opt/zaod/apps/notes/payload/main.py" 2>/dev/null
   else
     failures=$((failures + 1))
-    echo "  FAIL the notes launcher entry started nothing" >&2
-    sed -n '1,15p' "$RUNTIME/gio-launch.log" | sed 's/^/    /' >&2
+    echo "  FAIL the notes launcher entry started nothing (status $launched)" >&2
+    sed -n '1,15p' "$gio_log" | sed 's/^/    /' >&2
     if [ -f "$HOME/.zaod/logs/org.zaod.notes.log" ]; then
       tail -n 15 "$HOME/.zaod/logs/org.zaod.notes.log" | sed 's/^/    /' >&2
     fi
   fi
 fi
 
-echo "test-apps-wayland: $checked apps checked, $failures failed"
+echo "test-apps-wayland: $checked checks, $failures failed"
 if [ "$failures" -eq 0 ] && [ "$checked" -gt 0 ]; then exit 0; fi
 exit 1
