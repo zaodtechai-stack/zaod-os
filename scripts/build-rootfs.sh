@@ -267,7 +267,13 @@ as_root chroot "$ROOTFS_DIR" /usr/sbin/update-initramfs -c -k "$KERNEL_RELEASE"
 # SVG art is rendered to PNG inside the tree: icons and the wallpaper needed an
 # SVG loader in the image and were blank without one.
 as_root install -m 0755 scripts/render-zaod-art.py "$ROOTFS_DIR/tmp/render-zaod-art.py"
-as_root chroot "$ROOTFS_DIR" /usr/bin/python3 /tmp/render-zaod-art.py
+# The offscreen platform plugin is the normal route; the minimal one is the
+# fallback so a headless render cannot fail a 40 minute build on its own.
+if ! as_root chroot "$ROOTFS_DIR" env QT_QPA_PLATFORM=offscreen /usr/bin/python3 /tmp/render-zaod-art.py; then
+  say "offscreen platform unavailable, rendering with minimal"
+  as_root chroot "$ROOTFS_DIR" env QT_QPA_PLATFORM=minimal /usr/bin/python3 /tmp/render-zaod-art.py \
+    || fail "the SVG art could not be rendered to PNG"
+fi
 as_root rm -f "$ROOTFS_DIR/tmp/render-zaod-art.py"
 as_root chroot "$ROOTFS_DIR" /usr/bin/gdk-pixbuf-query-loaders --update-cache || true
 if as_root test -x "$ROOTFS_DIR/usr/bin/gtk-update-icon-cache"; then
@@ -277,7 +283,10 @@ fi
 # Every app has to open its window inside the image before it is squashed.
 as_root install -m 0755 scripts/smoke-apps-in-image.py "$ROOTFS_DIR/tmp/smoke-apps.py"
 say "proving every app opens its window"
-as_root chroot "$ROOTFS_DIR" /usr/bin/python3 /tmp/smoke-apps.py
+if ! as_root chroot "$ROOTFS_DIR" env QT_QPA_PLATFORM=offscreen /usr/bin/python3 /tmp/smoke-apps.py; then
+  as_root chroot "$ROOTFS_DIR" env QT_QPA_PLATFORM=minimal /usr/bin/python3 /tmp/smoke-apps.py \
+    || fail "an app cannot open its window inside the image"
+fi
 as_root rm -f "$ROOTFS_DIR/tmp/smoke-apps.py"
 
 say "verifying the desktop in the image"
