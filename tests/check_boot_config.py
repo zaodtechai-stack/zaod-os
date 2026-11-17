@@ -56,6 +56,16 @@ def check_grub(report: Report) -> None:
     # the console the onboarding wizard draws on. The daemon is now switched off
     # on the command line as well as masked from the live boot.
     report.contains(text, "plymouth.enable=0", "GRUB disables plymouth on the command line")
+    # The kernel gives /dev/console to the LAST console=, and systemd writes its
+    # status there. tty0 must therefore be last: iso-30 had ttyS0 last, so on a
+    # laptop with no serial port every systemd line went into a dead device and
+    # the screen went blank right after "handing over to the live system".
+    consoles = re.findall(r"console=(\S+)", text)
+    report.check(
+        bool(consoles) and consoles[-1].startswith("tty0"),
+        "the screen is the primary console (tty0 comes last)",
+        f"consoles were {consoles}",
+    )
 
     entries = re.findall(r"menuentry\s+\"([^\"]+)\"", text)
     report.check(len(entries) >= 7, "menu has at least seven entries", f"found {len(entries)}")

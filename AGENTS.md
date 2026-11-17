@@ -446,3 +446,19 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   and two long-stale checks (it still expected `set -eu` in a script that
   deliberately has none, and looked for the rescue loop in the wrong file) now
   read the file they describe: 92 checks, 0 failed.
+
+### 2026-11-17 (iso-31): the blank screen after switch_root was the console going to a dead serial port
+
+- Reported on real hardware, with a photo: the initramfs log ends at the new line
+  `[zaod] kernel 6.18.63-zaod, handing over to the live system` and the screen
+  stays blank after it. iso-30 did fix the ldconfig stall - that log is gone.
+- Cause: iso-30's command line had `console=tty0 console=ttyS0,115200`, and the
+  kernel hands /dev/console to the LAST one. systemd writes its own status to
+  /dev/console, so on a laptop that exposes a /dev/ttyS0 node but has no serial
+  port, every systemd line after switch_root went into a device nobody reads and
+  the screen showed nothing. QEMU never showed this because there ttyS0 is real.
+- Fix: `console=ttyS0,115200 console=tty0` - the screen is last, so it gets
+  /dev/console - plus `systemd.show_status=1`. Serial still gets its copy, so a
+  headless boot stays debuggable. `tests/check_boot_config.py` now fails if tty0
+  is not the last console.
+- 93 boot checks, ruff and 93 tests green.
