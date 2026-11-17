@@ -252,16 +252,16 @@ def check_scripts(report: Report) -> None:
 
 def check_boot_guard(report) -> None:
     """Nothing may hold the boot forever, and a slow boot must explain itself."""
-    guard = read(REPO_ROOT / "rootfs/overlay/etc/systemd/system.conf.d/20-zaod-boot-guard.conf")
+    guard = read(REPO_ROOT / "rootfs/files/etc/systemd/system.conf.d/20-zaod-boot-guard.conf")
     report.contains(guard, "DefaultTimeoutStartSec=", "the boot guard bounds unit start timeouts")
     report.contains(guard, "DefaultTimeoutStopSec=", "the boot guard bounds unit stop timeouts")
 
-    unit = read(REPO_ROOT / "rootfs/overlay/etc/systemd/system/zaod-boot-watchdog.service")
+    unit = read(REPO_ROOT / "rootfs/files/etc/systemd/system/zaod-boot-watchdog.service")
     report.contains(unit, "DefaultDependencies=no", "the watchdog is not bound to basic.target")
     report.contains(unit, "Type=simple", "the watchdog cannot delay the boot it watches")
     report.contains(unit, "ExecStart=/usr/local/sbin/zaod-boot-watchdog", "the watchdog unit runs the script")
 
-    script_path = REPO_ROOT / "rootfs/overlay/usr/local/sbin/zaod-boot-watchdog"
+    script_path = REPO_ROOT / "rootfs/files/usr/local/sbin/zaod-boot-watchdog"
     script = read(script_path)
     report.check(
         script_path.stat().st_mode & 0o111 != 0,
@@ -273,6 +273,15 @@ def check_boot_guard(report) -> None:
     report.contains(script, "zaod-oobe.service", "the watchdog leaves the onboarding wizard alone")
     report.contains(script, "graphical.target", "the watchdog waits for the desktop")
 
+    # The image gets /etc from FILES_DIR only. Anything placed in a directory the
+    # build never copies looks correct in the repo and is absent on the media -
+    # which is exactly how iso-32's build died: it was told to enable a unit that
+    # had landed in rootfs/overlay, a directory nothing copies.
+    report.contains(
+        build,
+        'FILES_DIR="rootfs/files"',
+        "the build copies rootfs/files into the image",
+    )
     build = read(REPO_ROOT / "scripts/build-rootfs.sh")
     report.contains(build, "zaod-boot-watchdog.service", "the watchdog is enabled in the image")
 
