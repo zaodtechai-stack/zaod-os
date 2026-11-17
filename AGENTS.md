@@ -365,3 +365,31 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   owned by sddm, and stamped `/etc/zaod/oobe-done`.
 - `/etc/issue` still said "the desktop starts by itself", which stopped being true
   when autologin was removed. Corrected; the next image carries it.
+
+### 2026-11-17: the boot no longer stalls on a splash that never runs (fixes the desktop)
+
+- Reported: "live account me bhi waisa hi flow add kar jaisa pure mode me hai" -
+  the flow was in place but nobody had seen it finish, because the machine never
+  reached a login screen.
+- Root cause, proven in QEMU on iso-26: `plymouth-quit-wait.service` carries
+  `ExecStart=-/usr/bin/plymouth --wait` and `TimeoutSec=0`, while
+  `plymouth-start.service` is neither enabled nor pulled in and the custom
+  initramfs never starts plymouthd. There was no splash to quit, so the unit sat
+  in "starting" for ever and held `multi-user.target`; `sddm.service` and
+  `graphical.target` were never started. Booting the same image with
+  `plymouth.enable=0` reached `multi-user.target`, `sddm.service` and
+  `graphical.target` normally, which confirmed the cause.
+- Fix: `splash` is gone from the GRUB command line (the boot stays readable, as
+  the rest of the design intends), and two drop-ins gate
+  `plymouth-quit-wait.service` and `plymouth-quit.service` on
+  `/run/plymouth/pid`, so a splash that is not running can never hold the boot
+  again. `apply-desktop.sh` installs them.
+- Also fixed the promise the banner had been making: `Press L to skip` had no
+  handler, and typing `l` created an account literally named `l`. The wizard now
+  treats `l`/`skip` on live media as "leave me alone, tell me the demo login",
+  writes nothing and lets the boot continue; installed media do not offer it.
+- Verified in QEMU against the wizard: name, account name, password, time zone
+  and confirmation all reach "Account hassan is ready. Starting the desktop...".
+- `tests/test_oobe.py`: 12 tests, including the two skip paths.
+  `tests/check_desktop_config.py`: 2160 checks, 0 failed.
+

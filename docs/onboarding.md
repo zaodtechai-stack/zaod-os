@@ -58,3 +58,16 @@ printf 'Hassan Ali\nhassan\nstrong-password-1\nstrong-password-1\nkarachi\ny\n' 
 
 `--dry-run` prints the `useradd` command it would run and stops, so the flow can
 be reviewed on a machine that must not be changed.
+
+## Skipping on live media
+
+The live image runs the wizard on every boot, because the account it creates
+lives in the tmpfs overlay and vanishes at power off. The banner therefore
+offers an escape: typing `l` (or `skip`) at the name prompt leaves the machine
+alone, prints the demo credentials `zaodlive` / `zaod`, and lets the boot carry
+on to the login screen. Nothing is written, so the next boot asks again. To
+create the account anyway, run `sudo systemctl restart zaod-oobe`.
+
+On installed media there is no demo account to fall back to, so `l` is an
+ordinary name there and the wizard does not offer the skip.
+

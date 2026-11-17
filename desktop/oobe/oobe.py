@@ -267,6 +267,14 @@ def wizard(console: Console, passwd_path: str = PASSWD_FILE, dry_run: bool = Fal
 
     while True:
         full_name = console.ask("Your name")
+        if live and full_name.lower() in {"l", "skip"}:
+            # The banner offers this, so it has to work: skipping leaves the demo
+            # account as the only way in and lets the boot carry on to the login
+            # screen instead of sitting on the wizard.
+            console.say("Skipping setup for now. Sign in with the demo account:")
+            console.say("  user: zaodlive    password: zaod")
+            console.say("To create your own account, run: sudo systemctl restart zaod-oobe")
+            return 0
         if not full_name:
             console.say("A name is needed so the account has a label.")
             continue

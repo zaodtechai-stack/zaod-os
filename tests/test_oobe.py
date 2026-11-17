@@ -99,3 +99,41 @@ def test_check_mode_reports_onboarding_then_ready(tmp_path, capsys):
     live.write_text(SYSTEM_PASSWD + "hassan:x:1001:1001::/home/hassan:/bin/bash\n", encoding="utf-8")
     assert oobe.main(["--check", "--passwd", str(live)]) == 0
     assert capsys.readouterr().out.strip() == "ready"
+
+
+def test_live_skip_creates_no_account(tmp_path, monkeypatch):
+    """The live banner offers "Press L to skip"; that must not create a user 'l'."""
+    import io
+    import sys as _sys
+
+    passwd = tmp_path / "passwd"
+    passwd.write_text(SYSTEM_PASSWD)
+    out = io.StringIO()
+    monkeypatch.setattr(oobe, "is_live", lambda: True)
+    monkeypatch.setattr(_sys, "stdin", io.StringIO("l\n"))
+    code = oobe.wizard(oobe.Console(out), passwd_path=str(passwd))
+    assert code == 0
+    assert passwd.read_text() == SYSTEM_PASSWD
+    printed = out.getvalue()
+    assert "zaodlive" in printed and "systemctl restart zaod-oobe" in printed
+
+
+def test_installed_media_do_not_offer_the_demo_account(tmp_path, monkeypatch):
+    """On installed media there is no demo account, so 'l' stays a name."""
+    import io
+    import sys as _sys
+
+    passwd = tmp_path / "passwd"
+    passwd.write_text(SYSTEM_PASSWD.replace("zaodlive:x:1000:1000::/home/zaodlive:/bin/bash\n", ""))
+    out = io.StringIO()
+    monkeypatch.setattr(oobe, "is_live", lambda: False)
+    monkeypatch.setattr(_sys, "stdin", io.StringIO("l\n"))
+    # 'l' is a name here, so the wizard moves on to the account name and then runs
+    # out of input instead of returning the "skipped" path.
+    try:
+        oobe.wizard(oobe.Console(out), passwd_path=str(passwd))
+    except EOFError:
+        pass
+    printed = out.getvalue()
+    assert "Account name" in printed
+    assert "zaodlive" not in printed
