@@ -92,6 +92,7 @@ entry_count=0
 while IFS= read -r entry; do
   [[ -n "$entry" ]] || continue
   entry_count=$((entry_count + 1))
+  zaod_entry="$(as_root sed -n 's/^X-Zaod-AppId=//p' "$TARGET_ROOT$entry" 2>/dev/null | head -1 || true)"
   exec_line="$(as_root sed -n 's/^Exec=//p' "$TARGET_ROOT$entry" 2>/dev/null | head -1 || true)"
   [[ -n "$exec_line" ]] || { bad "$entry has no Exec line"; continue; }
   program="${exec_line%% *}"
@@ -108,13 +109,16 @@ while IFS= read -r entry; do
     if as_root test -f "$TARGET_ROOT$script"; then ok "$entry -> $script"; else bad "$entry runs $script, which is not in the image"; fi
   elif as_root test -x "$TARGET_ROOT$program"; then
     ok "$entry -> $program"
-  else
+  elif [[ -n "$zaod_entry" ]]; then
     bad "$entry runs $program, which is not in the image"
+  else
+    # A package's own entry may name an alternative this image does not ship;
+    # only the launchers Zaod installs have to work.
+    printf '  note %s names %s, not installed\n' "$entry" "$program"
   fi
   # Only the launchers Zaod installs are held to the icon rule; a package's own
   # entry may name a theme icon we are not required to ship.
-  icon="$(as_root sed -n 's/^Icon=//p' "$TARGET_ROOT$entry" | head -1)"
-  zaod_entry="$(as_root sed -n 's/^X-Zaod-AppId=//p' "$TARGET_ROOT$entry" | head -1)"
+  icon="$(as_root sed -n 's/^Icon=//p' "$TARGET_ROOT$entry" 2>/dev/null | head -1 || true)"
   if [[ -n "$icon" ]]; then
     if [[ "$icon" == /* ]]; then
       if as_root test -s "$TARGET_ROOT$icon"; then
