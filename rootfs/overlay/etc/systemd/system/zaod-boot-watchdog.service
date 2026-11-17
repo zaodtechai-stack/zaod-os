@@ -1,0 +1,20 @@
+[Unit]
+Description=Zaod OS boot watchdog: put the reason for a slow boot on the screen
+Documentation=https://github.com/zaodtechai-stack/zaod-os/blob/main/docs/desktop.md
+# Early on purpose: this must run even when the boot never reaches basic.target,
+# which is exactly the case it exists for. Type=simple, so it never delays boot.
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target
+ConditionPathExists=/dev/tty1
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/zaod-boot-watchdog
+RemainAfterExit=no
+Nice=10
+# It is a diagnostic, not a unit to police: let it run until it decides to exit.
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=sysinit.target

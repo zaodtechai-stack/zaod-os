@@ -232,6 +232,33 @@ def check_scripts(report: Report) -> None:
     report.contains(usb, "carries a bootable Zaod OS image", "write-usb.sh verifies the label afterwards")
 
 
+def check_boot_guard(report) -> None:
+    """Nothing may hold the boot forever, and a slow boot must explain itself."""
+    guard = read(REPO_ROOT / "rootfs/overlay/etc/systemd/system.conf.d/20-zaod-boot-guard.conf")
+    report.contains(guard, "DefaultTimeoutStartSec=", "the boot guard bounds unit start timeouts")
+    report.contains(guard, "DefaultTimeoutStopSec=", "the boot guard bounds unit stop timeouts")
+
+    unit = read(REPO_ROOT / "rootfs/overlay/etc/systemd/system/zaod-boot-watchdog.service")
+    report.contains(unit, "DefaultDependencies=no", "the watchdog is not bound to basic.target")
+    report.contains(unit, "Type=simple", "the watchdog cannot delay the boot it watches")
+    report.contains(unit, "ExecStart=/usr/local/sbin/zaod-boot-watchdog", "the watchdog unit runs the script")
+
+    script_path = REPO_ROOT / "rootfs/overlay/usr/local/sbin/zaod-boot-watchdog"
+    script = read(script_path)
+    report.check(
+        script_path.stat().st_mode & 0o111 != 0,
+        "the watchdog script is executable",
+        f"mode {oct(script_path.stat().st_mode)}",
+    )
+    report.contains(script, "systemctl list-jobs", "the watchdog reports the pending jobs")
+    report.contains(script, "systemctl --failed", "the watchdog reports the failed units")
+    report.contains(script, "zaod-oobe.service", "the watchdog leaves the onboarding wizard alone")
+    report.contains(script, "graphical.target", "the watchdog waits for the desktop")
+
+    build = read(REPO_ROOT / "scripts/build-rootfs.sh")
+    report.contains(build, "zaod-boot-watchdog.service", "the watchdog is enabled in the image")
+
+
 def main(argv=None) -> int:
     import argparse
 
@@ -240,7 +267,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     report = Report(verbose=args.verbose)
-    for check in (check_grub, check_plymouth, check_live_init, check_scripts):
+    for check in (check_grub, check_plymouth, check_live_init, check_scripts, check_boot_guard):
         check(report)
 
     for failure in report.failures:

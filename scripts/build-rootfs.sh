@@ -248,7 +248,7 @@ cleanup_chroot_mounts
 trap - EXIT
 as_root chroot "$ROOTFS_DIR" /usr/bin/systemctl --root=/ enable NetworkManager.service \
   earlyoom.service systemd-timesyncd.service sddm.service zaod-lite-mode.service \
-  zaod-oobe.service
+  zaod-oobe.service zaod-boot-watchdog.service
 if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent group wheel >/dev/null 2>&1; then
   as_root chroot "$ROOTFS_DIR" /usr/sbin/groupadd --system wheel
 fi

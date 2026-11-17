@@ -1,0 +1,53 @@
+#!/bin/bash
+# Zaod OS boot watchdog.
+#
+# The live image boots on hardware we cannot see. Twice now the report from a
+# real machine was a still photo of the last few boot lines: the screen had
+# stopped changing and the one unit holding the boot up was not on it, so the
+# only way forward was to ask the person to switch to a text console and type
+# systemctl - on a laptop whose top row has no F-keys.
+#
+# This runs from sysinit and costs nothing when the boot is healthy: it exits as
+# soon as graphical.target is active. When the boot is still not there after 95 s
+# it writes the reason on the screen itself - the pending jobs and the failed
+# units - and gives the display manager one direct start, so the desktop appears
+# even if something upstream never reported back.
+set -u
+
+SCREEN=/dev/tty1
+WAIT_SECONDS=${ZAOD_WATCHDOG_WAIT:-95}
+CONSOLE_TAG=zaod-boot-watchdog
+
+log() {
+  printf '%s: %s\n' "$CONSOLE_TAG" "$*" >/dev/null 2>&1
+  printf '%s: %s\n' "$CONSOLE_TAG" "$*"
+}
+
+deadline=$((SECONDS + WAIT_SECONDS))
+while ((SECONDS < deadline)); do
+  if systemctl is-active --quiet graphical.target; then
+    exit 0
+  fi
+  sleep 5
+done
+
+# The onboarding wizard runs on this same console and is the intended screen
+# while it waits for input. Never write over it.
+if systemctl is-active --quiet zaod-oobe.service; then
+  exit 0
+fi
+
+{
+  printf '\n'
+  printf '======= Zaod OS: the boot is taking longer than it should =======\n'
+  printf 'Still waiting for:\n'
+  systemctl list-jobs --no-pager --no-legend
+  printf '\nUnits that failed:\n'
+  systemctl --failed --no-pager --no-legend
+  printf '\nThe desktop is being started directly now. If the screen stays like\n'
+  printf 'this, this list is the reason: photograph it.\n'
+} >"$SCREEN" 2>&1
+log "wrote the pending jobs to $SCREEN"
+
+systemctl start display-manager.service >/dev/null 2>&1
+log "started display-manager.service (exit $?)"

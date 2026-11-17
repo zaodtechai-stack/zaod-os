@@ -462,3 +462,19 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   headless boot stays debuggable. `tests/check_boot_config.py` now fails if tty0
   is not the last console.
 - 93 boot checks, ruff and 93 tests green.
+
+### 2026-11-17 (iso-32): a slow boot now explains itself on the screen
+
+- iso-31 got the boot text back on the screen (the console fix held), and the
+  report from hardware is a still photo of unit lines stopping around polkit,
+  NetworkManager, bluetooth and zaod-lite-mode. Which one is holding the boot
+  could not be read off that photo, and the laptop's top row has no F-keys, so
+  "switch to a text console and run systemctl" was not a reasonable ask.
+- Two additions, neither of which needs a key press:
+  - `system.conf.d/20-zaod-boot-guard.conf` caps any unit's start at 75 s and its
+    stop at 25 s, so no unit can hold the whole boot forever.
+  - `zaod-boot-watchdog.service` (sysinit, `Type=simple`, so it cannot delay the
+    boot it watches) waits 95 s for graphical.target; if it is still not there it
+    writes the pending jobs and the failed units onto tty1 and starts
+    display-manager directly. It never writes over the onboarding wizard.
+- `tests/check_boot_config.py`: 104 checks, 0 failed.
