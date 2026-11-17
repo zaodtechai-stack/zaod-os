@@ -14,6 +14,40 @@ import zaodapp
 from backend import StoreBackend, StoreError
 
 
+class UnavailableStore(StoreBackend):
+    """Stands in for the backend when the Zaod system libraries are missing."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+
+    def repositories(self):
+        return []
+
+    def cached(self):
+        return {}
+
+    def sync(self):
+        return {}
+
+    def catalogue(self, query, indexes=None):
+        return []
+
+    def permission_summary(self, item):
+        return ""
+
+    def install(self, app_id: str) -> str:
+        raise StoreError(self.reason)
+
+    def remove(self, app_id: str) -> str:
+        raise StoreError(self.reason)
+
+    def update(self, app_id: str) -> str:
+        raise StoreError(self.reason)
+
+    def update_all(self) -> str:
+        raise StoreError(self.reason)
+
+
 def build_window(store: StoreBackend | None = None):
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import (
@@ -28,8 +62,25 @@ def build_window(store: StoreBackend | None = None):
         QWidget,
     )
 
-    backend = store or StoreBackend()
+    if store is None:
+        try:
+            store = StoreBackend()
+        except StoreError as error:
+            # A store that cannot reach its index has to say so in a window. It
+            # used to raise before the window existed, so clicking Store closed
+            # it instantly and looked like "apps do not run".
+            store = UnavailableStore(str(error))
+    backend = store
     window = zaodapp.base_window("Store", 900, 600)
+
+    if isinstance(backend, UnavailableStore):
+        notice = QLabel(
+            "The app store is not connected to a package index yet.\n"
+            "The apps that ship with Zaod OS are in the launcher."
+        )
+        notice.setObjectName("muted")
+        notice.setWordWrap(True)
+        window.content.addWidget(notice)
 
     search = QLineEdit()
     search.setPlaceholderText("Search apps")

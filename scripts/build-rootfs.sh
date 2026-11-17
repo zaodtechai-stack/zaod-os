@@ -181,6 +181,16 @@ as_root bash desktop/scripts/apply-desktop.sh --root "$ROOTFS_DIR"
 # this the session starts on an empty desktop: the launcher and the store both
 # read /usr/share/applications.
 as_root python3 scripts/install-app-set.py --root "$ROOTFS_DIR"
+
+# The Zaod package system the Store and the `zaod` CLI read. Without
+# /usr/lib/zaod/zaodlib the store refuses to start at all ("zaodlib is not
+# installed; the store needs a Zaod system"), which is one of the apps that did
+# nothing when clicked.
+as_root mkdir -p "$ROOTFS_DIR/usr/lib/zaod" "$ROOTFS_DIR/etc/zaod/keys" \
+  "$ROOTFS_DIR/var/lib/zaod" "$ROOTFS_DIR/zaod/apps"
+as_root cp -a zaod/zaodlib "$ROOTFS_DIR/usr/lib/zaod/zaodlib"
+as_root install -m 0755 zaod/bin/zaod "$ROOTFS_DIR/usr/bin/zaod"
+as_root install -m 0755 zaod/bin/zaod-priv-helper "$ROOTFS_DIR/usr/lib/zaod/zaod-priv-helper"
 as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \
   "$ROOTFS_DIR/usr/share/wallpapers/zaod" \
   "$ROOTFS_DIR/usr/share/themes/Zaod"
@@ -193,7 +203,7 @@ as_root mkdir -p "$ROOTFS_DIR/etc/skel/.config"
 cat <<'SKEL' | as_root tee "$ROOTFS_DIR/etc/skel/.profile" >/dev/null
 # Zaod OS default shell profile
 if [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi
-export XDG_CURRENT_DESKTOP=KDE
+export XDG_CURRENT_DESKTOP=Zaod
 SKEL
 as_root chmod 0644 "$ROOTFS_DIR/etc/skel/.profile"
 
@@ -254,6 +264,22 @@ as_root chroot "$ROOTFS_DIR" /usr/sbin/update-initramfs -c -k "$KERNEL_RELEASE"
 # Proof the desktop in this tree can run, while /proc and /dev are still
 # mounted: a missing toolkit or icon theme is a black screen on real
 # hardware, and it must fail here instead.
+# SVG art is rendered to PNG inside the tree: icons and the wallpaper needed an
+# SVG loader in the image and were blank without one.
+as_root install -m 0755 scripts/render-zaod-art.py "$ROOTFS_DIR/tmp/render-zaod-art.py"
+as_root chroot "$ROOTFS_DIR" /usr/bin/python3 /tmp/render-zaod-art.py
+as_root rm -f "$ROOTFS_DIR/tmp/render-zaod-art.py"
+as_root chroot "$ROOTFS_DIR" /usr/bin/gdk-pixbuf-query-loaders --update-cache || true
+if as_root test -x "$ROOTFS_DIR/usr/bin/gtk-update-icon-cache"; then
+  as_root chroot "$ROOTFS_DIR" /usr/bin/gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+fi
+
+# Every app has to open its window inside the image before it is squashed.
+as_root install -m 0755 scripts/smoke-apps-in-image.py "$ROOTFS_DIR/tmp/smoke-apps.py"
+say "proving every app opens its window"
+as_root chroot "$ROOTFS_DIR" /usr/bin/python3 /tmp/smoke-apps.py
+as_root rm -f "$ROOTFS_DIR/tmp/smoke-apps.py"
+
 say "verifying the desktop in the image"
 bash scripts/verify-rootfs-desktop.sh --root "$ROOTFS_DIR"
 cleanup_chroot_mounts

@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -74,3 +77,39 @@ def test_every_shipped_app_points_into_the_image() -> None:
         assert (
             app / "payload" / exe
         ).is_file(), f"{app.name}: MANIFEST entry {exe} is not in its payload"
+
+
+def test_installed_apps_import_every_shared_module(tmp_path: Path) -> None:
+    """A payload whose helper is missing a module cannot start at all.
+
+    The image shipped every app with only zaodapp.py in payload/lib, while
+    zaodapp imports zaod_tokens on its first line, so each app died with
+    ModuleNotFoundError before drawing a window.
+    """
+    pytest.importorskip("PySide6")
+    installer = load_installer()
+    root = tmp_path / "rootfs"
+    (root / "etc").mkdir(parents=True)
+    apps_dir = tmp_path / "apps"
+    make_app(apps_dir, "calculator", "org.zaod.calculator")
+    # the shared helper directory the real apps/ tree carries
+    shutil.copytree(REPO / "apps" / "lib", apps_dir / "lib")
+
+    installer.install(root, apps_dir, dry_run=False)
+
+    lib = root / "opt/zaod/apps/calculator/payload/lib"
+    for module in sorted((REPO / "apps" / "lib").glob("*.py")):
+        assert (lib / module.name).is_file(), f"{module.name} was not installed with the app"
+
+
+def test_no_payload_depends_on_a_module_that_is_not_shared() -> None:
+    """Every `import zaodapp` neighbour in apps/lib must exist there."""
+    shared = {p.stem for p in (REPO / "apps" / "lib").glob("*.py")}
+    assert "zaodapp" in shared and "zaod_tokens" in shared
+    helper = (REPO / "apps" / "lib" / "zaodapp.py").read_text()
+    for line in helper.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("import ", "from ")):
+            name = stripped.split()[1].split(".")[0]
+            if name.startswith("zaod"):
+                assert name in shared, f"zaodapp imports {name}, which apps/lib does not ship"

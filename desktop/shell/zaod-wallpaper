@@ -1,0 +1,50 @@
+#!/bin/sh
+# Change the desktop wallpaper: zaod-wallpaper [--list] [name]
+set -eu
+
+WALLPAPERS=/usr/share/wallpapers/zaod
+CURRENT="$HOME/.config/zaod/wallpaper"
+
+usage() {
+  echo "usage: zaod-wallpaper [--list|NAME]" >&2
+  echo "  NAME is a file in $WALLPAPERS (with or without .jpg)" >&2
+  exit 2
+}
+
+list() {
+  find "$WALLPAPERS" -maxdepth 2 -type f \( -name '*.jpg' -o -name '*.png' \) \
+    | sort | sed "s|^$WALLPAPERS/||"
+}
+
+[ $# -ge 1 ] || usage
+case "$1" in
+  --list|-l) list; exit 0 ;;
+  --help|-h) usage ;;
+esac
+
+chosen=$1
+case "$chosen" in
+  /*) image=$chosen ;;
+  *) image=$WALLPAPERS/$chosen ;;
+esac
+if [ ! -f "$image" ]; then
+  image=$WALLPAPERS/collection/$chosen
+fi
+if [ ! -f "$image" ]; then
+  image=$WALLPAPERS/collection/$chosen.jpg
+fi
+if [ ! -f "$image" ]; then
+  echo "zaod-wallpaper: no wallpaper called '$1'" >&2
+  list >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$CURRENT")"
+printf '%s\n' "$image" > "$CURRENT"
+
+# swaybg shows one wallpaper per process, so the new one replaces the old.
+pkill -x swaybg 2>/dev/null || true
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  swaybg -i "$image" -m fill >/dev/null 2>&1 &
+fi
+echo "wallpaper: $image"

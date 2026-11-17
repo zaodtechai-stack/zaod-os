@@ -29,7 +29,6 @@ def categories(manifest: dict) -> str:
 
 def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
     installed: list[str] = []
-    shared_lib = apps_dir / "lib" / "zaodapp.py"
     for app in sorted(apps_dir.iterdir()):
         if not app.is_dir() or app.name in SKIP:
             continue
@@ -55,8 +54,15 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
             shutil.rmtree(target)
         shutil.copytree(payload, target / "payload")
         (target / "payload/lib").mkdir(parents=True, exist_ok=True)
-        if shared_lib.is_file():
-            shutil.copy2(shared_lib, target / "payload/lib/zaodapp.py")
+        # Every module the shared helper imports has to travel with it. Copying
+        # only zaodapp.py left zaod_tokens behind, and because zaodapp imports it
+        # on its first line every installed app died with
+        # "ModuleNotFoundError: No module named 'zaod_tokens'" before it could
+        # draw a window - which is what "no app runs" looked like on hardware.
+        shared_lib = apps_dir / "lib"
+        if shared_lib.is_dir():
+            for module in sorted(shared_lib.glob("*.py")):
+                shutil.copy2(module, target / "payload/lib" / module.name)
         shutil.copy2(manifest_path, target / "MANIFEST.json")
         icon = app / "icon.svg"
         icon_target = root / "usr/share/icons/hicolor/scalable/apps" / f"{app_id}.svg"

@@ -69,6 +69,16 @@ have /usr/share/icons/hicolor/index.theme
 loader="$(find "$TARGET_ROOT/usr/lib" -name 'libpixbufloader*svg.so' 2>/dev/null | head -1)"
 if [[ -n "$loader" ]]; then ok "SVG pixbuf loader (${loader#"$TARGET_ROOT"} )"; else bad "no SVG pixbuf loader (icons and wallpaper stay blank)"; fi
 
+# 3a. The Zaod package system behind the Store and the zaod CLI.
+have /usr/lib/zaod/zaodlib/__init__.py
+have /usr/bin/zaod
+if as_root test -x "$TARGET_ROOT/usr/bin/zaod" && \
+   as_root chroot "$TARGET_ROOT" /usr/bin/zaod --help >/dev/null 2>&1; then
+  ok "zaod --help runs"
+else
+  bad "the zaod CLI does not run inside the image"
+fi
+
 # 3b. The login theme: SDDM prints its red "the current theme cannot be loaded"
 #     banner over the login box when a single property is unknown, so the theme
 #     may only use Qt Quick core modules (Controls took `contentItem` away).
@@ -83,6 +93,25 @@ if as_root test -s "$theme_qml"; then
 else
   bad "missing /usr/share/sddm/themes/zaod/Main.qml"
 fi
+
+# 3c. The built-in wallpaper collection and the login background.
+wall_dir="$TARGET_ROOT/usr/share/wallpapers/zaod/collection"
+count=0
+if as_root test -d "$wall_dir"; then
+  count=$(as_root find "$wall_dir" -maxdepth 1 -name '*.jpg' | wc -l)
+fi
+if [ "$count" -ge 9 ]; then
+  ok "$count built-in wallpapers"
+else
+  bad "only $count built-in wallpapers in /usr/share/wallpapers/zaod/collection (want 9)"
+fi
+have /usr/share/wallpapers/zaod/collection/zaod-night-pier.jpg
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-wallpaper"; then
+  ok "zaod-wallpaper is installed"
+else
+  bad "zaod-wallpaper is missing"
+fi
+have /usr/share/sddm/themes/zaod/background.jpg
 
 # 4. The session: entry file, launcher, panel, compositor and wallpaper.
 have /usr/share/wayland-sessions/zaod.desktop
