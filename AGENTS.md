@@ -514,3 +514,11 @@ blocked until Phases 3-5 produce a bootable rootfs/ISO.
   device and could not start Plasma.
 - `tests/check_kernel_config.py` requires all four, with the reason inline, so the
   next change cannot quietly turn the console off again.
+- Login theme: `palette.button: root.accent` inside the Sign in Button killed the
+  whole theme. Qt Quick Controls in this image has no `palette` property on
+  Button, and the greeter answers one unknown property by discarding the file and
+  drawing its own red "The current theme cannot be loaded due to the errors below"
+  panel over the login box - visible on the user's photo of iso-35's screen.
+  The button now paints through `background` (Rectangle) and `contentItem` (Text),
+  and `tests/check_desktop_config.py::check_theme_qml` fails any `palette.<name>:`
+  assignment in the theme, comments excluded.

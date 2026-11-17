@@ -101,10 +101,30 @@ Rectangle {
                     Button {
                         id: loginButton
                         text: qsTr("Sign in")
-                        font { family: "Inter"; pixelSize: 14; bold: true }
                         Layout.fillWidth: true
-                        palette.button: root.accent
                         onClicked: root.login()
+                        // Qt Quick Controls in this image exposes no `palette`
+                        // property on Button. `palette.button: root.accent` did not
+                        // just colour the button: the greeter rejected the file
+                        // ("Cannot assign to non-existent property palette") and
+                        // showed its own red "The current theme cannot be loaded"
+                        // screen over the login box, so nobody could sign in.
+                        // background/contentItem exist on every Control and are the
+                        // supported way to paint a button.
+                        background: Rectangle {
+                            implicitHeight: rounded(40)
+                            radius: rounded(10)
+                            color: loginButton.pressed ? Qt.darker(root.accent, 1.25)
+                                 : loginButton.hovered ? Qt.lighter(root.accent, 1.15)
+                                 : root.accent
+                        }
+                        contentItem: Text {
+                            text: loginButton.text
+                            color: "#0B0F14"
+                            font { family: "Inter"; pixelSize: 14; bold: true }
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
                 }
             }

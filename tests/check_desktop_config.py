@@ -173,6 +173,7 @@ def check_theme(report: Report) -> None:
         report.check(symbol in main_qml, f"Main.qml uses {symbol}")
     report.check("userModel.lastUser" in main_qml, "Main.qml reads the last user")
     check_theme_metadata(report, theme_dir)
+    check_theme_qml(report, theme_dir)
 
 
 def check_theme_metadata(report: Report, theme_dir) -> None:
@@ -205,6 +206,36 @@ def check_theme_metadata(report: Report, theme_dir) -> None:
     report.check(
         section.get("QtVersion", "") == "6",
         "sddm theme metadata declares the Qt the greeter is built against",
+    )
+
+
+def check_theme_qml(report: Report, theme_dir) -> None:
+    """The theme QML has to be loadable by the Qt the greeter is built against.
+
+    A single unknown property is enough for the greeter to throw the file away and
+    paint its own "The current theme cannot be loaded due to the errors below"
+    screen on top of the login box - which is what `palette.button: root.accent`
+    did: Qt Quick Controls here has no palette property on Button, so the login
+    screen could be seen but never used. Button colouring goes through
+    background/contentItem, which every Control has.
+    """
+    qml = read_text(theme_dir / "Main.qml")
+    # Only real property assignments count: the comments in Main.qml name the bad
+    # line on purpose, so a plain substring search would match them.
+    code = "\n".join(
+        line.split("//", 1)[0] for line in qml.splitlines() if not line.strip().startswith("//")
+    )
+    report.check(
+        re.search(r"\bpalette\.[A-Za-z]+:", code) is None,
+        "sddm theme paints buttons without the absent palette property",
+    )
+    report.check(
+        "background:" in qml and "contentItem:" in qml,
+        "sddm theme styles the primary button through background/contentItem",
+    )
+    report.check(
+        "import SddmComponents" in qml,
+        "sddm theme imports SddmComponents",
     )
 
 
