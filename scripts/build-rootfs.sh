@@ -92,8 +92,10 @@ mapfile -t packages < <(grep -vE '^[[:space:]]*(#|$)' "$PACKAGE_LIST")
 mapfile -t removals < <(grep -vE '^[[:space:]]*(#|$)' "$REMOVE_LIST")
 (( ${#removals[@]} > 0 )) || fail "the removal list is empty"
 
+# The desktop is Zaod's own: labwc is the compositor and the panel/app set come
+# from desktop/ and apps/, so no Plasma package belongs in this list.
 for required in systemd dbus network-manager pipewire wireplumber mesa-vulkan-drivers \
-                plasma-desktop sddm polkitd bubblewrap zram-tools earlyoom python3; do
+                labwc sddm polkitd bubblewrap zram-tools earlyoom python3; do
   printf '%s\n' "${packages[@]}" | grep -qx "$required" \
     || fail "the package list is missing $required"
 done

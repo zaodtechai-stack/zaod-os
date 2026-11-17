@@ -110,6 +110,21 @@ def check_package_list(report: Report) -> None:
     )
 
 
+def check_build_guards(report: Report) -> None:
+    """The build's own sanity list has to name the desktop this image ships.
+
+    build-rootfs.sh refuses to run when a required package is missing from
+    packages.list; while it still demanded plasma-desktop, removing Plasma made
+    every image build fail before debootstrap started.
+    """
+    script = (ROOTFS.parent / "scripts" / "build-rootfs.sh").read_text()
+    report.check("labwc" in script, "the build requires the Zaod compositor")
+    report.check(
+        "plasma-desktop" not in script,
+        "the build does not require a Plasma package",
+    )
+
+
 def check_removal_list(report: Report) -> None:
     removals = listing(ROOTFS / "rootfs.remove.list")
     report.check(bool(removals), "rootfs/rootfs.remove.list is not empty")
@@ -243,7 +258,13 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     report = Report(verbose=args.verbose)
-    for check in (check_package_list, check_removal_list, check_shipped_files, check_build_script):
+    for check in (
+        check_package_list,
+        check_removal_list,
+        check_build_guards,
+        check_shipped_files,
+        check_build_script,
+    ):
         check(report)
 
     for failure in report.failures:
