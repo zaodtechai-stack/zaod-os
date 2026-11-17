@@ -227,7 +227,12 @@ jobs:
 
             Kernel: Linux 6.18.63-zaod, compiled from the pinned kernel.org source
             archive with `kernel/zaod_defconfig`. No distribution kernel is involved.
-            Desktop: Plasma 6 with the Zaod Fluent design layer from Phase 6.
+            Desktop: the Zaod desktop. labwc is the Wayland compositor and
+            zaod-panel is the panel, launcher and quick settings, drawn from the
+            Zaod design tokens. No Plasma and no KDE package is in the image. The
+            app set (store, editor, notes, tasks, viewer, calculator, clock,
+            converter, monitor, control center, OOBE, hello) is installed with a
+            launcher entry each, plus foot (terminal) and thunar (files).
             Verify with `sha256sum -c SHA256SUMS` before writing to USB.
           files: |
             build/out/*.iso
