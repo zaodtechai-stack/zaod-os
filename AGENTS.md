@@ -594,3 +594,23 @@ and it resolved bare Exec names against the host instead of the image PATH. Them
 icon names from other packages' entries are now notes, not failures; only launchers
 Zaod installs must resolve their icon.
 
+### 2026-11-17 (fix 3): the login theme was rejected by the greeter
+
+Build 46 on hardware: SDDM showed its own greeter with red text "The current theme
+cannot be loaded ... Main.qml:121:25: Cannot assign to non-existent property
+'contentItem'". In a theme, `Button` and `TextField` resolve to simplified
+components (from SddmComponents), not to Qt Quick Controls widgets, so the palette
+and contentItem styling added earlier had no property to assign to.
+
+Main.qml is now built from Qt Quick primitives only - Rectangle, Text, TextInput,
+MouseArea, QtQuick.Layouts - and imports neither QtQuick.Controls nor
+SddmComponents, so no type is shadowed and no property can go missing. The field
+hints, the session chooser, Sign in and the power buttons are drawn by hand; the
+password field is a core TextInput.
+
+Guards: tests/test_sddm_theme_loads.py instantiates the theme in a real Qt Quick
+runtime with stand-ins for sddm/config/sessionModel/userModel and fails on any QML
+error; tests/check_desktop_config.py forbids palette assignments, contentItem
+assignments, and both component imports; verify-rootfs-desktop.sh fails the build
+if the installed theme imports either module.
+

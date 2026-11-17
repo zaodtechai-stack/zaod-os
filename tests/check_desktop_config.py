@@ -224,10 +224,10 @@ def check_theme_qml(report: Report, theme_dir) -> None:
 
     A single unknown property is enough for the greeter to throw the file away and
     paint its own "The current theme cannot be loaded due to the errors below"
-    screen on top of the login box - which is what `palette.button: root.accent`
-    did: Qt Quick Controls here has no palette property on Button, so the login
-    screen could be seen but never used. Button colouring goes through
-    background/contentItem, which every Control has.
+    banner on top of the login box. Both Controls styling routes failed on real
+    hardware: `palette.button` and then `contentItem` on Button were reported as
+    non-existent properties, so nobody saw the Zaod login screen. The theme is
+    therefore built from Qt Quick primitives only and must not import Controls.
     """
     qml = read_text(theme_dir / "Main.qml")
     # Only real property assignments count: the comments in Main.qml name the bad
@@ -240,12 +240,20 @@ def check_theme_qml(report: Report, theme_dir) -> None:
         "sddm theme paints buttons without the absent palette property",
     )
     report.check(
-        "background:" in qml and "contentItem:" in qml,
-        "sddm theme styles the primary button through background/contentItem",
+        "QtQuick.Controls" not in code,
+        "sddm theme does not depend on Qt Quick Controls",
     )
     report.check(
-        "import SddmComponents" in qml,
-        "sddm theme imports SddmComponents",
+        re.search(r"^\s*contentItem\s*:", code, re.MULTILINE) is None,
+        "sddm theme assigns no contentItem on a control",
+    )
+    report.check(
+        "SddmComponents" not in code,
+        "sddm theme imports no component module that could shadow Button/TextField",
+    )
+    report.check(
+        "TextInput" in code,
+        "sddm theme uses the core text input for the password field",
     )
 
 

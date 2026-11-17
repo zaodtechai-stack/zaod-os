@@ -1,8 +1,15 @@
 // Zaod OS login theme. Original artwork and layout only.
+//
+// Built from Qt Quick primitives only - Rectangle, Text, TextInput, MouseArea -
+// and deliberately from neither Qt Quick Controls nor SddmComponents. The greeter
+// in this image rejected `Button.palette` and then `Button.contentItem` with
+// "Cannot assign to non-existent property", which painted SDDM's red "The
+// current theme cannot be loaded" banner over the login box on real hardware:
+// `Button` and `TextField` in a theme resolve to components' simplified types,
+// not to the Controls widgets that carry those properties. Nothing here shadows a
+// Qt Quick type, so no property can go missing.
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import SddmComponents 2.0
 
 Rectangle {
     id: root
@@ -12,11 +19,23 @@ Rectangle {
     readonly property color accent: "#0067C0"
     readonly property color surface: "#1B1D21"
     readonly property color surfaceText: "#F6F7F9"
+    readonly property color fieldSurface: "#24262B"
+    readonly property color fieldText: "#F6F7F9"
     readonly property int grid: 4
 
     function rounded(value) { return Math.round(value / grid) * grid }
 
     property int sessionIndex: sessionModel.lastIndex
+
+    function cycleSession() {
+        var count = Math.max(1, sessionModel.rowCount())
+        root.sessionIndex = (root.sessionIndex + 1) % count
+    }
+
+    function login() {
+        errorLabel.text = ""
+        sddm.login(userInput.text, passwordInput.text, root.sessionIndex)
+    }
 
     Image {
         anchors.fill: parent
@@ -44,166 +63,240 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: rounded(160)
+            Layout.preferredHeight: rounded(280)
             radius: rounded(16)
             color: root.surface
             opacity: 0.92
-            border.color: "#FFFFFF"
-            border.width: 0
+
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: rounded(24)
-                spacing: rounded(16)
+                spacing: rounded(12)
 
-                // The account name is a field, not a label. Live media now asks
-                // for a login like the installed system does, and on a fresh
-                // live boot there is no "last user" to fall back on, so a label
-                // reading "zaodlive" next to a password box could never sign in:
-                // the login call had an empty user name.
-                TextField {
+                // The account name is a field, not a label. Live media asks for a
+                // login like the installed system does, and on a fresh live boot
+                // there is no "last user" to fall back on, so a label reading
+                // "zaodlive" next to a password box could never sign in.
+                Rectangle {
                     id: userField
                     Layout.fillWidth: true
-                    placeholderText: qsTr("User name")
-                    text: userModel.lastUser || "zaodlive"
-                    color: root.surfaceText
-                    font { family: "Inter"; pixelSize: 16 }
-                    selectByMouse: true
-                    onAccepted: passwordField.forceActiveFocus()
-                    KeyNavigation.tab: passwordField
+                    Layout.preferredHeight: rounded(44)
+                    radius: rounded(10)
+                    color: root.fieldSurface
+                    border.width: 1
+                    border.color: userInput.activeFocus ? root.accent : "#3A3D44"
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: rounded(12)
+                        anchors.rightMargin: rounded(12)
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("User name")
+                        visible: userInput.text.length === 0
+                        color: "#8B9098"
+                        font { family: "Inter"; pixelSize: 14 }
+                    }
+
+                    TextInput {
+                        id: userInput
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: rounded(12)
+                        anchors.rightMargin: rounded(12)
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: implicitHeight
+                        color: root.fieldText
+                        font { family: "Inter"; pixelSize: 15 }
+                        selectByMouse: true
+                        clip: true
+                        text: userModel.lastUser || "zaodlive"
+                        onAccepted: passwordInput.forceActiveFocus()
+                        KeyNavigation.tab: passwordInput
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.IBeamCursor
+                        onClicked: userInput.forceActiveFocus()
+                    }
                 }
 
-                TextField {
+                Rectangle {
                     id: passwordField
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Password")
-                    echoMode: TextInput.Password
-                    font { family: "Inter"; pixelSize: 16 }
-                    focus: true
-                    selectByMouse: true
-                    onAccepted: root.login()
-                    KeyNavigation.backtab: userField
-                    KeyNavigation.tab: sessionButton
+                    Layout.preferredHeight: rounded(44)
+                    radius: rounded(10)
+                    color: root.fieldSurface
+                    border.width: 1
+                    border.color: passwordInput.activeFocus ? root.accent : "#3A3D44"
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: rounded(12)
+                        anchors.rightMargin: rounded(12)
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Password")
+                        visible: passwordInput.text.length === 0
+                        color: "#8B9098"
+                        font { family: "Inter"; pixelSize: 14 }
+                    }
+
+                    TextInput {
+                        id: passwordInput
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: rounded(12)
+                        anchors.rightMargin: rounded(12)
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: implicitHeight
+                        echoMode: TextInput.Password
+                        color: root.fieldText
+                        font { family: "Inter"; pixelSize: 15 }
+                        selectByMouse: true
+                        clip: true
+                        onAccepted: root.login()
+                        KeyNavigation.backtab: userInput
+                        KeyNavigation.tab: sessionButton
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.IBeamCursor
+                        onClicked: passwordInput.forceActiveFocus()
+                    }
                 }
 
-                RowLayout {
+                // Session chooser: cycles the session list, as before, drawn from
+                // primitives so it cannot fail to load.
+                Rectangle {
+                    id: sessionButton
                     Layout.fillWidth: true
-                    spacing: rounded(12)
+                    Layout.preferredHeight: rounded(36)
+                    radius: rounded(8)
+                    color: sessionArea.containsMouse ? "#2E3138" : "#24262B"
+                    border.width: 1
+                    border.color: "#3A3D44"
 
-                    Button {
-                        id: sessionButton
+                    Text {
+                        anchors.centerIn: parent
                         text: sessionModel.getString(root.sessionIndex) || qsTr("Session")
+                        color: root.surfaceText
                         font { family: "Inter"; pixelSize: 12 }
-                        Layout.fillWidth: true
-                        onClicked: root.sessionIndex = (root.sessionIndex + 1) % Math.max(1, sessionModel.rowCount())
-                        KeyNavigation.tab: loginButton
                     }
 
-                    Button {
-                        id: loginButton
-                        text: qsTr("Sign in")
-                        Layout.fillWidth: true
-                        onClicked: root.login()
-                        // Qt Quick Controls in this image exposes no `palette`
-                        // property on Button. `palette.button: root.accent` did not
-                        // just colour the button: the greeter rejected the file
-                        // ("Cannot assign to non-existent property palette") and
-                        // showed its own red "The current theme cannot be loaded"
-                        // screen over the login box, so nobody could sign in.
-                        // background/contentItem exist on every Control and are the
-                        // supported way to paint a button.
-                        background: Rectangle {
-                            implicitHeight: rounded(40)
-                            radius: rounded(10)
-                            color: loginButton.pressed ? Qt.darker(root.accent, 1.25)
-                                 : loginButton.hovered ? Qt.lighter(root.accent, 1.15)
-                                 : root.accent
-                        }
-                        contentItem: Text {
-                            text: loginButton.text
-                            color: "#0B0F14"
-                            font { family: "Inter"; pixelSize: 14; bold: true }
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
+                    MouseArea {
+                        id: sessionArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.cycleSession()
                     }
+                }
+
+                // Sign in: a filled rectangle and a label, with press and hover
+                // feedback drawn by hand.
+                Rectangle {
+                    id: loginButton
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: rounded(40)
+                    radius: rounded(10)
+                    color: loginArea.pressed ? Qt.darker(root.accent, 1.25)
+                         : loginArea.containsMouse ? Qt.lighter(root.accent, 1.15)
+                         : root.accent
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: qsTr("Sign in")
+                        color: "#0B0F14"
+                        font { family: "Inter"; pixelSize: 14; bold: true }
+                    }
+
+                    MouseArea {
+                        id: loginArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.login()
+                    }
+                }
+
+                Text {
+                    id: errorLabel
+                    text: ""
+                    color: "#FFB4AB"
+                    font { family: "Inter"; pixelSize: 12 }
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: text.length > 0
                 }
             }
         }
+    }
 
-        Text {
-            id: errorLabel
-            text: ""
-            color: "#FFB4AB"
-            font { family: "Inter"; pixelSize: 12 }
-            Layout.alignment: Qt.AlignHCenter
-            visible: text.length > 0
-        }
+    // Power controls, drawn the same primitive way.
+    Row {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: rounded(24)
+        spacing: rounded(12)
 
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: rounded(8)
+        Rectangle {
+            width: rounded(96)
+            height: rounded(32)
+            radius: rounded(8)
+            color: rebootArea.containsMouse ? "#2E3138" : root.surface
+            opacity: 0.9
 
-            Button {
-                text: qsTr("Sleep")
-                font { family: "Inter"; pixelSize: 12 }
-                onClicked: sddm.suspend()
-            }
-            Button {
+            Text {
+                anchors.centerIn: parent
                 text: qsTr("Restart")
+                color: root.surfaceText
                 font { family: "Inter"; pixelSize: 12 }
+            }
+
+            MouseArea {
+                id: rebootArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: sddm.reboot()
             }
-            Button {
+        }
+
+        Rectangle {
+            width: rounded(96)
+            height: rounded(32)
+            radius: rounded(8)
+            color: powerArea.containsMouse ? "#2E3138" : root.surface
+            opacity: 0.9
+
+            Text {
+                anchors.centerIn: parent
                 text: qsTr("Shut down")
+                color: root.surfaceText
                 font { family: "Inter"; pixelSize: 12 }
+            }
+
+            MouseArea {
+                id: powerArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: sddm.powerOff()
             }
         }
     }
 
-    Text {
-        id: clock
-        anchors { top: parent.top; topMargin: rounded(48); horizontalCenter: parent.horizontalCenter }
-        color: root.surfaceText
-        opacity: 0.9
-        font { family: "Inter"; pixelSize: 56; weight: Font.Light }
-        text: Qt.formatTime(new Date(), config.timeFormat || "HH:mm")
-    }
-
     Connections {
         target: sddm
         function onLoginFailed() {
-            errorLabel.text = qsTr("Wrong password. Try again.")
-            passwordField.text = ""
-            passwordField.forceActiveFocus()
+            errorLabel.text = qsTr("Wrong user name or password")
+            passwordInput.text = ""
         }
-        function onInformationMessage(message) {
-            errorLabel.text = message
-        }
-    }
-
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        onTriggered: clock.text = Qt.formatTime(new Date(), config.timeFormat || "HH:mm")
-    }
-
-    function login() {
-        var user = userField.text.trim()
-        if (user.length === 0) {
-            errorLabel.text = qsTr("Enter the user name.")
-            userField.forceActiveFocus()
-            return
-        }
-        sddm.login(user, passwordField.text, root.sessionIndex)
     }
 
     Component.onCompleted: {
-        if (userField.text.length > 0) {
-            passwordField.forceActiveFocus()
-        } else {
-            userField.forceActiveFocus()
-        }
+        passwordInput.forceActiveFocus()
     }
 }

@@ -69,6 +69,21 @@ have /usr/share/icons/hicolor/index.theme
 loader="$(find "$TARGET_ROOT/usr/lib" -name 'libpixbufloader*svg.so' 2>/dev/null | head -1)"
 if [[ -n "$loader" ]]; then ok "SVG pixbuf loader (${loader#"$TARGET_ROOT"} )"; else bad "no SVG pixbuf loader (icons and wallpaper stay blank)"; fi
 
+# 3b. The login theme: SDDM prints its red "the current theme cannot be loaded"
+#     banner over the login box when a single property is unknown, so the theme
+#     may only use Qt Quick core modules (Controls took `contentItem` away).
+theme_qml="$TARGET_ROOT/usr/share/sddm/themes/zaod/Main.qml"
+if as_root test -s "$theme_qml"; then
+  ok "/usr/share/sddm/themes/zaod/Main.qml"
+  if as_root grep -Eq "QtQuick.Controls|SddmComponents" "$theme_qml"; then
+    bad "the login theme imports a module whose components shadow the Qt Quick types it styles"
+  else
+    ok "the login theme stays inside Qt Quick core"
+  fi
+else
+  bad "missing /usr/share/sddm/themes/zaod/Main.qml"
+fi
+
 # 4. The session: entry file, launcher, panel, compositor and wallpaper.
 have /usr/share/wayland-sessions/zaod.desktop
 have /usr/local/bin/zaod-session
