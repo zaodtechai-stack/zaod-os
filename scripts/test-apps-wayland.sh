@@ -86,6 +86,12 @@ done
 if [ -f /usr/share/applications/org.zaod.notes.desktop ] && [ -x /usr/bin/python3 ]; then
   checked=$((checked + 1))
   gio_log="$RUNTIME/gio-launch.log"
+  if [ ! -s /tmp/gio-launch-entry.py ]; then
+    # the helper is staged beside this script by the rootfs build, not shipped in
+    # the image, so a manual run outside the build must say that instead of
+    # reporting the notes launcher as broken
+    printf '  skip: /tmp/gio-launch-entry.py is not staged (run this from the build)\n'
+  fi
   /usr/bin/python3 /tmp/gio-launch-entry.py org.zaod.notes.desktop >"$gio_log" 2>&1
   launched=$?
   sleep "$SETTLE"
