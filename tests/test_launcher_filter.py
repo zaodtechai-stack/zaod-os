@@ -46,3 +46,17 @@ def test_ordinary_third_party_apps_survive():
     hidden = _load_helper()
     for app_id in ("org.xfce.thunar.desktop", "chromium.desktop", "org.gnome.Calculator.desktop"):
         assert hidden(app_id) is False, app_id
+
+
+def test_grid_is_rebuilt_every_time_the_launcher_opens():
+    """An app added from the store has to show up without logging out.
+
+    The store writes a .desktop file into ~/.local/share/applications while the
+    panel keeps running; filling the grid only in __init__ hid the new app until
+    the next session.
+    """
+    import re
+
+    source = PANEL.read_text()
+    body = source.split("def toggle_launcher", 1)[1].split("def launch", 1)[0]
+    assert re.search(r"launcher\.fill\(\)", body), "toggle_launcher must refresh the grid"

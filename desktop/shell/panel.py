@@ -477,6 +477,11 @@ class Panel(Gtk.Window):
             self.launcher.hide()
             return
         self.launcher.show_all()
+        # An app added from the store writes a .desktop file into
+        # ~/.local/share/applications while the panel is already running, so the
+        # grid has to be rebuilt when it opens. Filling only in __init__ meant a
+        # freshly installed app stayed invisible until the next login.
+        self.launcher.fill()
         self.launcher.present()
         self.launcher.search.grab_focus()
 
