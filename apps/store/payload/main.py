@@ -575,13 +575,24 @@ def build_window(store: StoreBackend | None = None):
                 refresh()
                 return
             if item["state"] == "installed":
-                from gi.repository import Gio
-
-                info = Gio.DesktopAppInfo.new(f"{item['id']}.desktop")
-                if info is None:
-                    report(f"no launcher entry for {item['name']}", error=True)
+                # the import and the launch both failed with a raw traceback
+                # before, so a broken launcher entry looked like a dead button
+                try:
+                    from gi.repository import Gio, GLib
+                except ImportError:
+                    report("This build cannot start apps from the store", error=True)
                     return
-                info.launch([], None)
+                try:
+                    info = Gio.DesktopAppInfo.new(f"{item['id']}.desktop")
+                    if info is None:
+                        report(f"no launcher entry for {item['name']}", error=True)
+                        return
+                    info.launch([], None)
+                except (GLib.Error, OSError, RuntimeError, ValueError) as error:
+                    # GLib raises its own error type when a launcher entry is
+                    # broken; anything else here is an unlaunchable entry
+                    report(f"could not start {item['name']}: {error}", error=True)
+                    return
                 report(f"Starting {item['name']}")
                 return
             if item["state"] == "update":

@@ -567,13 +567,15 @@ class Panel(Gtk.Window):
         box.pack_start(self.battery_label, False, False, 0)
 
         power_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        # "labwc -k" is not a lock screen: labwc has no such flag, so the Lock
+        # button did nothing at all. swaylock is in the image now.
         for label, command in (
-            ("Lock", ["/usr/bin/labwc", "-k"]),
+            ("Lock", ["/usr/bin/swaylock", "-f", "-c", "0b0d12"]),
             ("Reboot", ["/usr/bin/systemctl", "reboot"]),
             ("Shut down", ["/usr/bin/systemctl", "poweroff"]),
         ):
             button = Gtk.Button(label=label)
-            button.connect("clicked", lambda _b, c=command: run(*c))
+            button.connect("clicked", lambda _b, c=command, l=label: self.act(l, *c))
             power_row.pack_start(button, True, True, 0)
         box.pack_start(power_row, False, False, 0)
 
@@ -744,6 +746,17 @@ class Panel(Gtk.Window):
         else:
             self.net_status.set_text(message or "Bluetooth updated.")
         return False
+
+    def act(self, label: str, *command: str) -> None:
+        """Run a session command; if it is not installed, say so.
+
+        Reboot, shut down and lock used to swallow the failure: run() returns
+        False when the binary is missing and the buttons looked dead.
+        """
+        if not run(*command):
+            self.net_status.set_text(f"{label} is not available on this system")
+        else:
+            self.net_status.set_text(f"{label}…")
 
     def on_night_light(self, tile: Gtk.ToggleButton) -> None:
         if tile.get_active():

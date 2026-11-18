@@ -1,0 +1,47 @@
+#!/bin/sh
+# Take a screenshot on the Zaod session.
+#
+# The Print key was bound to "zaod-screenshot" and no such program existed in the
+# image, so the key did nothing at all. This is that program: grim draws the
+# screen, wl-clipboard puts the picture on the clipboard so it can be pasted at
+# once, and the file lands in the person's picture folder where they can find it.
+#
+#   zaod-screenshot            whole screen
+#   zaod-screenshot --region   drag a rectangle (Super+Shift+S)
+#   zaod-screenshot --window   the focused window
+set -eu
+
+dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
+mkdir -p "$dir"
+file="$dir/zaod-$(date +%Y%m%d-%H%M%S).png"
+
+case "${1:-}" in
+  --region)
+    geometry="$(slurp 2>/dev/null)" || exit 0   # Esc while dragging is not an error
+    [ -n "$geometry" ] || exit 0
+    grim -g "$geometry" "$file"
+    ;;
+  --window)
+    grim -g "$(slurp -o 2>/dev/null)" "$file" 2>/dev/null || grim "$file"
+    ;;
+  *)
+    grim "$file"
+    ;;
+esac
+
+# A zero byte picture is a failure, not a screenshot.
+if [ ! -s "$file" ]; then
+  printf 'zaod-screenshot: could not capture the screen\n' >&2
+  exit 1
+fi
+
+if command -v wl-copy >/dev/null 2>&1; then
+  wl-copy --type image/png <"$file" 2>/dev/null || true
+fi
+
+# Tell the person where it went, if the session has a notifier.
+if command -v notify-send >/dev/null 2>&1; then
+  notify-send -i "$file" "Screenshot saved" "$file" 2>/dev/null || true
+fi
+
+printf '%s\n' "$file"

@@ -83,6 +83,9 @@ install_file "$DESKTOP_DIR/shell/zaod-run" \
   "$TARGET_ROOT/usr/local/bin/zaod-run" 0755
 install_file "$DESKTOP_DIR/shell/zaod-open" \
   "$TARGET_ROOT/usr/local/bin/zaod-open" 0755
+# the Print key was bound to this and the program was never shipped
+install_file "$DESKTOP_DIR/shell/zaod-screenshot" \
+  "$TARGET_ROOT/usr/local/bin/zaod-screenshot" 0755
 install_file "$DESKTOP_DIR/shell/labwc/rc.xml" "$TARGET_ROOT/etc/xdg/labwc/rc.xml" 0644
 install_file "$DESKTOP_DIR/shell/labwc/autostart" "$TARGET_ROOT/etc/xdg/labwc/autostart" 0644
 install_file "$DESKTOP_DIR/shell/labwc/menu.xml" "$TARGET_ROOT/etc/xdg/labwc/menu.xml" 0644

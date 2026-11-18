@@ -266,6 +266,34 @@ if (( entry_count == 0 )); then
 fi
 printf 'verify-rootfs-desktop: %d launcher entries checked\n' "$entry_count"
 
+
+# ---- keys bound in rc.xml must run programs the image contains ----------------
+# The Print key was bound to "zaod-screenshot" and that program was never shipped,
+# so a key that looked wired did nothing. Every Execute command is checked here.
+rc="$TARGET_ROOT/etc/xdg/labwc/rc.xml"
+if as_root test -s "$rc"; then
+  while read -r command; do
+    [[ -n "$command" ]] || continue
+    binary="${command%% *}"
+    if as_root test -x "$TARGET_ROOT$binary"; then
+      ok "key runs $binary"
+    else
+      bad "a key binding runs $binary, which is not in the image"
+    fi
+  done < <(as_root sed -n 's/.*<action name="Execute"[^>]*command="\([^"]*\)".*/\1/p' "$rc" | sort -u)
+  # the lock screen the panel's Lock button and Super+L use
+  if as_root test -x "$TARGET_ROOT/usr/bin/swaylock"; then
+    ok "swaylock is installed (Lock button and Super+L)"
+  else
+    bad "swaylock is missing: the Lock button would do nothing"
+  fi
+fi
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-screenshot"; then
+  ok "zaod-screenshot is installed (Print key)"
+else
+  bad "zaod-screenshot is missing: the Print key would do nothing"
+fi
+
 if (( FAILED )); then
   printf 'verify-rootfs-desktop: FAIL\n' >&2
   exit 1
