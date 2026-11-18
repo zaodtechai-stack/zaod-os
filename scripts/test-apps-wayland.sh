@@ -22,7 +22,7 @@ export WLR_RENDERER=pixman
 export WLR_HEADLESS_OUTPUTS=1
 export ZAOD_THEME=${ZAOD_THEME:-dark}
 
-# shellcheck disable=SC2317  # run from the EXIT trap
+# shellcheck disable=SC2317,SC2329  # run from the EXIT trap
 cleanup() {
   [ -n "${compositor:-}" ] && kill "$compositor" 2>/dev/null
   if [ -n "${RUNTIME:-}" ] && [ -d "$RUNTIME" ]; then
