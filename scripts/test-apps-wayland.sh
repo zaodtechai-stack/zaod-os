@@ -144,9 +144,9 @@ if ! kill -0 "$panel_pid" 2>/dev/null; then
   failures=$((failures + 1))
   echo "  FAIL the panel exited on its own" >&2
   sed -n '1,25p' "$panel_log" | sed 's/^/    /' >&2
-elif grep -qE "Traceback|Error:" "$panel_log"; then
+elif grep -qiE "traceback|theme parsing error|gtk-critical|gtk-warning|attributeerror|typeerror" "$panel_log"; then
   failures=$((failures + 1))
-  echo "  FAIL the panel reported an error while starting" >&2
+  echo "  FAIL the panel printed errors while starting" >&2
   sed -n '1,25p' "$panel_log" | sed 's/^/    /' >&2
 else
   shot="$RUNTIME/panel.png"

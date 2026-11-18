@@ -192,16 +192,16 @@ window.zaod-panel {{
 .zaod-quick-entry:focus {{
   border-color: {ACCENT};
 }}
-secretscale.zaod-volume trough {{
+scale.zaod-volume trough {{
   min-height: 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
 }}
-secretscale.zaod-volume highlight {{
+scale.zaod-volume highlight {{
   border-radius: 999px;
   background: {ACCENT};
 }}
-secretscale.zaod-volume slider {{
+scale.zaod-volume slider {{
   background: {TEXT};
   border-radius: 999px;
   min-width: 14px;
@@ -524,6 +524,7 @@ class Panel(Gtk.Window):
         self.volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
         self.volume.set_draw_value(False)
         self.volume.set_value(self.read_volume())
+        self.volume.get_style_context().add_class("zaod-volume")
         self.volume.connect("value-changed", self.set_volume)
         box.pack_start(self.volume, False, False, 0)
 
