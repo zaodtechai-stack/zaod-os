@@ -22,11 +22,26 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+from pathlib import Path
 
 import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, Gtk
+
+for candidate in ("/usr/lib/zaod", str(Path(__file__).resolve().parent)):
+    if candidate not in sys.path:
+        sys.path.insert(0, candidate)
+
+try:
+    from connectivity import BluetoothManager, NetworkError, WifiManager
+except ImportError:  # a panel without the network layer still has to start
+    WifiManager = BluetoothManager = None
+
+    class NetworkError(RuntimeError):
+        """Raised when the network layer is not installed."""
+
 
 ACCENT = "#0067C0"
 ACCENT_TEXT = "#06121F"
@@ -121,6 +136,76 @@ window.zaod-panel {{
   color: {MUTED};
   font-size: 11px;
   font-weight: 700;
+}}
+/* quick settings: a compact control panel, not a wall of labels */
+.zaod-quick-title {{
+  color: {MUTED};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}}
+.zaod-note {{
+  color: {MUTED};
+  font-size: 12px;
+}}
+.zaod-net-row {{
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: {TEXT};
+  padding: 7px 10px;
+  min-height: 22px;
+}}
+.zaod-net-row:hover {{
+  background: rgba(76, 194, 255, 0.18);
+  border-color: rgba(76, 194, 255, 0.45);
+}}
+.zaod-net-row:active {{
+  background: rgba(76, 194, 255, 0.28);
+}}
+.zaod-quick-tile {{
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: {TEXT};
+  padding: 8px 10px;
+  min-height: 26px;
+}}
+.zaod-quick-tile:checked {{
+  background: {ACCENT};
+  border-color: {ACCENT};
+  color: {ACCENT_TEXT};
+  font-weight: 600;
+}}
+.zaod-quick-tile:hover {{
+  border-color: rgba(255, 255, 255, 0.22);
+}}
+.zaod-quick-entry {{
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: {TEXT};
+  padding: 7px 9px;
+  caret-color: {ACCENT};
+}}
+.zaod-quick-entry:focus {{
+  border-color: {ACCENT};
+}}
+secretscale.zaod-volume trough {{
+  min-height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}}
+secretscale.zaod-volume highlight {{
+  border-radius: 999px;
+  background: {ACCENT};
+}}
+secretscale.zaod-volume slider {{
+  background: {TEXT};
+  border-radius: 999px;
+  min-width: 14px;
+  min-height: 14px;
 }}
 popover.zaod-popover, popover.zaod-popover > box {{
   background: {SURFACE_HIGH};
@@ -303,6 +388,9 @@ class Panel(Gtk.Window):
         self.set_skip_pager_hint(True)
         self.set_title("Zaod panel")
         self.launcher = Launcher()
+        # ---- quick settings state ----
+        self.pending_ssid: str | None = None
+        self._password_handler: int | None = None
 
         bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         bar.get_style_context().add_class("zaod-bar")
@@ -370,42 +458,285 @@ class Panel(Gtk.Window):
         except GLib.Error as error:
             print(f"zaod-panel: cannot launch {info.get_name()}: {error}", file=sys.stderr)
 
+    # ---- quick settings: Wi-Fi, Bluetooth, sound, battery, power ----------
     def build_quick_settings(self) -> Gtk.Popover:
+        """The control panel behind the clock.
+
+        Wi-Fi here is the real thing: it lists the networks nmcli can see, asks
+        for the password of a secured one and only then joins it, and says what
+        went wrong instead of failing silently.
+        """
         popover = Gtk.Popover()
         popover.get_style_context().add_class("zaod-popover")
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box.get_style_context().add_class("zaod-popover")
-        box.set_border_width(8)
+        box.set_border_width(12)
+        box.set_size_request(340, -1)
         popover.add(box)
 
-        theme = Gtk.Label(label=f"Theme: {theme_variant()}", xalign=0)
-        box.pack_start(theme, False, False, 0)
+        self.wifi = WifiManager() if WifiManager else None
+        self.bluetooth = BluetoothManager() if BluetoothManager else None
+        self.net_status = Gtk.Label(label="", xalign=0)
+        self.net_status.get_style_context().add_class("zaod-note")
+        self.net_status.set_line_wrap(True)
+        self.net_password = Gtk.Entry()
+        self.net_password.set_visibility(False)
+        self.net_password.set_placeholder_text("Wi-Fi password")
+        self.net_password.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.net_connect = Gtk.Button(label="Connect")
+        self.net_password_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.net_password_row.pack_start(self.net_password, True, True, 0)
+        self.net_password_row.pack_start(self.net_connect, False, False, 0)
+        self.net_password_row.hide()
+        self.pending_ssid = ""
 
-        volume_label = Gtk.Label(label="Volume", xalign=0)
-        volume_label.get_style_context().add_class("zaod-title")
-        box.pack_start(volume_label, False, False, 0)
-        volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
-        volume.set_value(60)
-        volume.set_draw_value(False)
-        volume.connect("value-changed", self.set_volume)
-        box.pack_start(volume, False, False, 0)
+        # tiles: Wi-Fi, Bluetooth, night light
+        tiles = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.wifi_tile = Gtk.ToggleButton(label="Wi-Fi")
+        self.wifi_tile.get_style_context().add_class("zaod-tile")
+        self.wifi_tile.connect("toggled", self.on_wifi_toggle)
 
+        self.bt_tile = Gtk.ToggleButton(label="Bluetooth")
+        self.bt_tile.get_style_context().add_class("zaod-tile")
+        self.bt_tile.connect("toggled", self.on_bt_toggle)
+
+        night = Gtk.ToggleButton(label="Night light")
+        night.get_style_context().add_class("zaod-tile")
+        night.connect("toggled", self.on_night_light)
+
+        for tile in (self.wifi_tile, self.bt_tile, night):
+            tiles.pack_start(tile, True, True, 0)
+        box.pack_start(tiles, False, False, 0)
+
+        box.pack_start(self.net_status, False, False, 0)
+        self.net_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.pack_start(self.net_list, False, False, 0)
+        box.pack_start(self.net_password_row, False, False, 0)
+
+        refresh = Gtk.Button(label="Scan for networks")
+        refresh.connect("clicked", lambda _b: self.refresh_networks(scan=True))
+        box.pack_start(refresh, False, False, 0)
+
+        # sound
+        volume_title = Gtk.Label(label="Volume", xalign=0)
+        volume_title.get_style_context().add_class("zaod-title")
+        box.pack_start(volume_title, False, False, 0)
+        self.volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
+        self.volume.set_draw_value(False)
+        self.volume.set_value(self.read_volume())
+        self.volume.connect("value-changed", self.set_volume)
+        box.pack_start(self.volume, False, False, 0)
+
+        self.battery_label = Gtk.Label(label=self.battery_text(), xalign=0)
+        self.battery_label.get_style_context().add_class("zaod-note")
+        box.pack_start(self.battery_label, False, False, 0)
+
+        power_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         for label, command in (
             ("Lock", ["/usr/bin/labwc", "-k"]),
-            ("Sleep", ["/usr/bin/systemctl", "suspend"]),
-            ("Restart", ["/usr/bin/systemctl", "reboot"]),
+            ("Reboot", ["/usr/bin/systemctl", "reboot"]),
             ("Shut down", ["/usr/bin/systemctl", "poweroff"]),
         ):
             button = Gtk.Button(label=label)
             button.connect("clicked", lambda _b, c=command: run(*c))
-            box.pack_start(button, False, False, 0)
+            power_row.pack_start(button, True, True, 0)
+        box.pack_start(power_row, False, False, 0)
 
+        popover.connect("shown", self.on_quick_shown)
         box.show_all()
+        self.net_password_row.hide()
         return popover
 
-    def set_volume(self, scale: Gtk.Scale) -> None:
-        level = int(scale.get_value())
-        run("/usr/bin/pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{level}%")
+    # ---- networking --------------------------------------------------------
+    def on_quick_shown(self, *_args) -> None:
+        self.battery_label.set_text(self.battery_text())
+        if self.wifi is not None:
+            try:
+                self.wifi_tile.set_active(self.wifi.radio_enabled())
+            except NetworkError:
+                pass
+            self.refresh_networks(scan=False)
+        else:
+            self.net_status.set_text("The network layer is not installed.")
+
+    def refresh_networks(self, scan: bool = True) -> None:
+        if self.wifi is None:
+            return
+        for child in self.net_list.get_children():
+            child.destroy()
+        self.net_status.set_text("Looking for networks…")
+
+        def work() -> None:
+            try:
+                points = self.wifi.scan(rescan=scan)
+                # active() returns (ssid, ip) or None; the menu only says what it
+                # is joined to, so keep the name.
+                active = self.wifi.active()
+                connected = active[0] if active else None
+                error = None
+            except NetworkError as exc:
+                points, connected, error = [], None, str(exc)
+            GLib.idle_add(self.show_networks, points, connected, error)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def show_networks(self, points, connected, error) -> bool:
+        for child in self.net_list.get_children():
+            child.destroy()
+        if error:
+            self.net_status.set_text(error)
+            return False
+        if not points:
+            self.net_status.set_text("No networks found nearby.")
+            return False
+        self.net_status.set_text(
+            f"Connected to {connected}" if connected else f"{len(points)} networks nearby"
+        )
+        for point in points:
+            label = f"{point.ssid}   {point.signal}%"
+            if point.secured:
+                label += "  🔒"
+            if point.in_use:
+                label += "  ✓"
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("zaod-net-row")
+            button.connect("clicked", self.on_network_clicked, point)
+            button.show()
+            self.net_list.pack_start(button, False, False, 0)
+        return False
+
+    def on_network_clicked(self, _button, point) -> None:
+        if point.in_use:
+            self.tell(self.wifi.disconnect())
+            self.refresh_networks(scan=False)
+            return
+        if not point.secured:
+            self.join_network(point.ssid, None)
+            return
+        self.pending_ssid = point.ssid
+        self.net_password.set_text("")
+        self.net_status.set_text(f"{point.ssid} needs its password.")
+        self.net_password_row.show_all()
+        try:
+            self.net_connect.handler_disconnect(self._password_handler)
+        except (AttributeError, TypeError):
+            pass
+        self._password_handler = self.net_connect.connect("clicked", self.submit_password)
+        self.net_password.grab_focus()
+
+    def submit_password(self, *_args) -> None:
+        secret = self.net_password.get_text()
+        ssid = self.pending_ssid
+        if not ssid:
+            return
+        if len(secret) < 8:
+            self.net_status.set_text("A Wi-Fi password is at least 8 characters.")
+            return
+        self.net_password_row.hide()
+        self.join_network(ssid, secret)
+
+    def join_network(self, ssid: str, secret: str | None) -> None:
+        self.net_status.set_text(f"Connecting to {ssid}…")
+
+        def work() -> None:
+            try:
+                message, error = self.wifi.connect(ssid, secret), None
+            except NetworkError as exc:
+                message, error = None, str(exc)
+            GLib.idle_add(self.finish_join, message, error)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def finish_join(self, message, error) -> bool:
+        if error:
+            self.net_status.set_text(error)
+            if "password" in error.lower():
+                self.net_password_row.show_all()
+                self.net_password.set_text("")
+                self.net_password.grab_focus()
+        else:
+            self.net_status.set_text(message or "Connected.")
+        self.refresh_networks(scan=False)
+        return False
+
+    def tell(self, message: str) -> None:
+        self.net_status.set_text(message)
+
+    def on_wifi_toggle(self, tile: Gtk.ToggleButton) -> None:
+        if self.wifi is None:
+            return
+        want = tile.get_active()
+
+        def work() -> None:
+            try:
+                self.wifi.set_radio(want)
+                self.wifi_radio_error = None
+            except NetworkError as exc:
+                self.wifi_radio_error = str(exc)
+            GLib.idle_add(self.after_radio, want)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def after_radio(self, want: bool) -> bool:
+        error = getattr(self, "wifi_radio_error", None)
+        if error:
+            self.net_status.set_text(error)
+            self.wifi_tile.set_active(not want)
+        else:
+            self.net_status.set_text("Wi-Fi on." if want else "Wi-Fi off.")
+        self.refresh_networks(scan=want)
+        return False
+
+    def on_bt_toggle(self, tile: Gtk.ToggleButton) -> None:
+        if self.bluetooth is None:
+            return
+        want = tile.get_active()
+
+        def work() -> None:
+            try:
+                message = self.bluetooth.set_power(want)
+                error = None
+            except NetworkError as exc:
+                message, error = None, str(exc)
+            GLib.idle_add(self.finish_bt, tile, message, error)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def finish_bt(self, tile, message, error) -> bool:
+        if error:
+            self.net_status.set_text(error)
+            tile.set_active(not tile.get_active())
+        else:
+            self.net_status.set_text(message or "Bluetooth updated.")
+        return False
+
+    def on_night_light(self, tile: Gtk.ToggleButton) -> None:
+        if tile.get_active():
+            run("/usr/bin/wlsunset", "-T", "4500", "-t", "3500")
+        else:
+            run("/usr/bin/pkill", "-x", "wlsunset")
+
+    # ---- sound and battery -------------------------------------------------
+    def read_volume(self) -> float:
+        try:
+            out = subprocess.run(
+                ["/usr/bin/wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"],
+                capture_output=True, text=True, timeout=5, check=False,
+            ).stdout
+            return float(out.split()[1]) * 100 if out.split() else 60.0
+        except (OSError, ValueError, IndexError):
+            return 60.0
+
+    def battery_text(self) -> str:
+        for supply in Path("/sys/class/power_supply").glob("BAT*"):
+            try:
+                charge = int((supply / "capacity").read_text().strip())
+                state = (supply / "status").read_text().strip().lower()
+            except (OSError, ValueError):
+                continue
+            suffix = " (charging)" if state == "charging" else ""
+            return f"Battery {charge}%{suffix}"
+        return "Battery: mains power"
 
 
 def attach(window: Gtk.Window) -> None:

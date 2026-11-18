@@ -142,3 +142,6 @@ usbutils
 pciutils
 rfkill
 chromium
+wlr-randr
+brightnessctl
+wlsunset

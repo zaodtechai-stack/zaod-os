@@ -196,6 +196,9 @@ as_root install -m 0644 desktop/webapps/webapps.json "$ROOTFS_DIR/usr/share/zaod
 as_root mkdir -p "$ROOTFS_DIR/usr/lib/zaod" "$ROOTFS_DIR/etc/zaod/keys" \
   "$ROOTFS_DIR/var/lib/zaod" "$ROOTFS_DIR/zaod/apps"
 as_root cp -a zaod/zaodlib "$ROOTFS_DIR/usr/lib/zaod/zaodlib"
+# The panel and Control Center share one network layer, so they cannot disagree
+# about what nmcli said.
+as_root install -m 0644 apps/lib/connectivity.py "$ROOTFS_DIR/usr/lib/zaod/connectivity.py"
 as_root install -m 0755 zaod/bin/zaod "$ROOTFS_DIR/usr/bin/zaod"
 as_root install -m 0755 zaod/bin/zaod-priv-helper "$ROOTFS_DIR/usr/lib/zaod/zaod-priv-helper"
 as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \

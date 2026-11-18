@@ -287,6 +287,8 @@ def build_window(store: StoreBackend | None = None):
     for key in ("All", "Installed", "Optional", "Web", "Social", "Video"):
         chip = QPushButton(key)
         chip.setCheckable(True)
+        chip.setObjectName("chip")
+        chip.setAutoExclusive(True)
         chip.setChecked(key == "All")
         chip.setCursor(Qt.CursorShape.PointingHandCursor)
         chips[key] = chip
@@ -454,28 +456,33 @@ def build_window(store: StoreBackend | None = None):
     def card(item: dict) -> QPushButton:
         button = QPushButton()
         button.setCheckable(True)
+        button.setObjectName("card")
+        button.setAutoExclusive(True)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.setMinimumHeight(140)
+        button.setFixedSize(QSize(316, 92))
         button.setStyleSheet(
             "QPushButton { text-align: left; padding: 0px; }"
             f"QPushButton:checked {{ border: 2px solid {c['accent']}; }}"
         )
         layout = QHBoxLayout(button)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(12)
         badge = QLabel()
-        badge.setFixedSize(QSize(52, 52))
+        badge.setFixedSize(QSize(44, 44))
         badge.setScaledContents(True)
-        badge.setPixmap(icon_for(item.get("icon", "")).pixmap(QSize(52, 52)))
-        layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
+        badge.setPixmap(icon_for(item.get("icon", "")).pixmap(QSize(44, 44)))
+        layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
         column = QVBoxLayout()
         column.setSpacing(2)
+        column.setContentsMargins(0, 0, 0, 0)
         title = QLabel(item["name"])
         title.setStyleSheet(f"font-weight: 600; color: {c['textPrimary']};")
         summary = QLabel(item.get("summary") or "")
         summary.setObjectName("muted")
-        summary.setWordWrap(True)
-        summary.setMaximumHeight(40)
+        summary.setWordWrap(False)
+        summary.setFixedHeight(18)
+        summary.setText(summary.fontMetrics().elidedText(
+            item.get("summary") or "", Qt.TextElideMode.ElideRight, 210))
         column.addWidget(title)
         column.addWidget(summary)
         if item["state"] == "optional":
@@ -499,11 +506,17 @@ def build_window(store: StoreBackend | None = None):
         visible = [item for item in items if in_chip(item, chip) and matches(item, query)]
         previous = state["selected"]["id"] if state["selected"] else None
         clear_grid()
+        columns = 3
         for index, item in enumerate(visible):
-            grid.addWidget(card(item), index // 3, index % 3)
-        grid.setRowStretch(len(visible) // 3 + 1, 1)
-        for column in range(3):
-            grid.setColumnStretch(column, 1)
+            grid.addWidget(
+                card(item), index // columns, index % columns,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+            )
+        rows = (len(visible) + columns - 1) // columns
+        for column in range(columns):
+            grid.setColumnStretch(column, 0)
+        grid.setColumnStretch(columns, 1)   # the slack sits to the right, not between cards
+        grid.setRowStretch(rows, 1)
         if not visible:
             report("Nothing matches that search.")
             select(None)

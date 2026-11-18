@@ -1,0 +1,25 @@
+/* Zaod network policy.
+ *
+ * The person at the keyboard of a live or installed Zaod session may scan for
+ * Wi-Fi, join and leave networks, switch the radio and manage Bluetooth without
+ * a password prompt: there is no graphical polkit agent in this session to ask
+ * for one, so a "needs authentication" answer would make the button do nothing.
+ * Saving a network for every user still requires being in group netdev or wheel
+ * (live user: zaodlive is in both). Nothing here touches package management or
+ * other administrative actions, which keep the rules in 50-zaod-desktop.rules. */
+polkit.addRule(function(action, subject) {
+    if (!subject.active) {
+        return null;
+    }
+    var trusted = subject.isInGroup("netdev") || subject.isInGroup("wheel");
+    if (!trusted) {
+        return null;
+    }
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0) {
+        return polkit.Result.YES;
+    }
+    if (action.id.indexOf("org.bluez.") === 0) {
+        return polkit.Result.YES;
+    }
+    return null;
+});

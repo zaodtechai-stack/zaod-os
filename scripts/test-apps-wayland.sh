@@ -102,6 +102,38 @@ if [ -f /usr/share/applications/org.zaod.notes.desktop ] && [ -x /usr/bin/python
   fi
 fi
 
+# The panel is the desktop: if it dies, the screen has no bar, no clock and no
+# way to any app. It is started exactly as the session starts it, left alone for
+# a few seconds and screenshotted, so "panel starts but draws nothing" fails too.
+panel_log="$RUNTIME/panel.log"
+checked=$((checked + 1))
+/usr/local/bin/zaod-panel >"$panel_log" 2>&1 &
+panel_pid=$!
+sleep 3
+if ! kill -0 "$panel_pid" 2>/dev/null; then
+  failures=$((failures + 1))
+  echo "  FAIL the panel exited on its own" >&2
+  sed -n '1,25p' "$panel_log" | sed 's/^/    /' >&2
+elif grep -qE "Traceback|Error:" "$panel_log"; then
+  failures=$((failures + 1))
+  echo "  FAIL the panel reported an error while starting" >&2
+  sed -n '1,25p' "$panel_log" | sed 's/^/    /' >&2
+else
+  shot="$RUNTIME/panel.png"
+  if [ -x /usr/bin/grim ] && grim "$shot" >/dev/null 2>&1; then
+    size=$(wc -c <"$shot" 2>/dev/null || echo 0)
+    if [ "$size" -gt 4000 ]; then
+      echo "  ok   the panel runs and draws ($size byte screenshot)"
+    else
+      failures=$((failures + 1))
+      echo "  FAIL the panel drew an empty screen ($size byte screenshot)" >&2
+    fi
+  else
+    echo "  ok   the panel runs (grim could not grab a screenshot here)"
+  fi
+fi
+kill "$panel_pid" 2>/dev/null
+
 echo "test-apps-wayland: $checked checks, $failures failed"
 if [ "$failures" -eq 0 ] && [ "$checked" -gt 0 ]; then exit 0; fi
 exit 1
