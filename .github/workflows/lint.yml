@@ -14,8 +14,11 @@ jobs:
           python-version: "3.12"
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: shellcheck libegl1 libgl1 libxkbcommon0 libfontconfig1 fonts-dejavu-core
-          version: 1.2
+          # python3-gi, gir1.2-gtk-3.0 and xvfb were missing, so the GTK panel and
+          # control-centre suites skipped themselves and the green check never
+          # covered them. They are installed here so the run means what it looks like.
+          packages: shellcheck libegl1 libgl1 libxkbcommon0 libfontconfig1 fonts-dejavu-core python3-gi gir1.2-gtk-3.0 gir1.2-glib-2.0 xvfb
+          version: 1.3
       - uses: astral-sh/ruff-action@v3
       - name: Check shell scripts
         run: shellcheck scripts/*.sh tests/*.sh desktop/scripts/*.sh kernel/*.sh
@@ -27,7 +30,14 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           ZAOD_THEME: dark
-        run: python3 -m pytest tests zaod/tests -q
+        run: python3 -m pytest tests zaod/tests -q -rs
+      - name: Fail if the GTK suites skipped (the gate must mean what it says)
+        run: |
+          out=$(QT_QPA_PLATFORM=offscreen python3 -m pytest tests -q -rs 2>&1 || true)
+          if grep -qi "skipped.*GTK\|requires PyGObject\|GTK is not available" <<<"$out"; then
+            echo "GTK tests skipped: the runner is missing python3-gi/gir1.2-gtk-3.0/xvfb"; exit 1
+          fi
+          echo "GTK suites ran"
       - name: Verify generated design artefacts are current
         run: |
           python3 desktop/design/tools/tokens_to_qml.py --check

@@ -203,12 +203,16 @@ as_root install -m 0644 apps/lib/connectivity.py "$ROOTFS_DIR/usr/lib/zaod/conne
 # per-user install list. It runs over a Unix socket, so no port is opened.
 as_root install -m 0755 services/zaod-hub/hub.py "$ROOTFS_DIR/usr/local/bin/zaod-hub"
 as_root install -m 0644 apps/lib/zaodhub.py "$ROOTFS_DIR/usr/lib/zaod/zaodhub.py"
+# The account window the store and Studio share: sign in, sync, sign out.
+as_root install -m 0644 apps/lib/zaodaccount.py "$ROOTFS_DIR/usr/lib/zaod/zaodaccount.py"
 # Receiving updates: the channel is a release asset, so a fix reaches an installed
 # system without a new ISO and without touching anyone's data.
 as_root install -m 0755 services/zaod-update/update.py "$ROOTFS_DIR/usr/local/bin/zaod-update"
 # The hosted half: sign in to the Supabase-backed account to back this computer up
 # and use the same account on a second one. Local files stay the truth offline.
 as_root install -m 0755 services/zaod-cloud/cloud.py "$ROOTFS_DIR/usr/local/bin/zaod-cloud"
+# The same client as an importable module, for the store and Studio windows.
+as_root install -m 0644 services/zaod-cloud/cloud.py "$ROOTFS_DIR/usr/lib/zaod/zaod_cloud.py"
 as_root install -D -m 0644 rootfs/files/etc/zaod/update-channel.json \
   "$ROOTFS_DIR/etc/zaod/update-channel.json"
 as_root install -m 0755 zaod/bin/zaod "$ROOTFS_DIR/usr/bin/zaod"

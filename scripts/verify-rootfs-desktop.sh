@@ -121,6 +121,11 @@ if as_root test -x "$TARGET_ROOT/usr/bin/chromium"; then
 else
   bad "chromium is missing, so the web apps cannot open"
 fi
+if as_root test -f "$TARGET_ROOT/usr/lib/zaod/zaodaccount.py" && as_root test -f "$TARGET_ROOT/usr/lib/zaod/zaod_cloud.py"; then
+  ok "the account window is installed (store and Studio can sign in)"
+else
+  bad "the shared account window is missing"
+fi
 if as_root test -f "$TARGET_ROOT/etc/zaod/cloud.json"; then
   ok "the cloud project is configured (accounts can be backed up)"
 else

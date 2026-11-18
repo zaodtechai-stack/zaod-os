@@ -298,6 +298,11 @@ def build_window(store: StoreBackend | None = None):
     header.addWidget(search)
     sync_button = QPushButton("Sync")
     header.addWidget(sync_button)
+    account_button = QPushButton("Account")
+    account_button.setObjectName("accountButton")
+    account_button.setToolTip("Sign in to back up this computer and get your apps back")
+    account_button.setCursor(Qt.CursorShape.PointingHandCursor)
+    header.addWidget(account_button)
     window.content.addLayout(header)
 
     chips_row = QHBoxLayout()
@@ -364,6 +369,19 @@ def build_window(store: StoreBackend | None = None):
     window.content.addWidget(status)
 
     state: dict[str, object] = {"items": [], "selected": None, "filter": "All", "buttons": {}}
+
+    def open_account() -> None:
+        try:
+            import zaodaccount
+        except ImportError as error:  # the shared module is not on this system
+            report(f"The account window is unavailable: {error}", error=True)
+            return
+        dialog = zaodaccount.build_dialog(window)
+        dialog.exec()
+        refresh()
+
+    account_button.clicked.connect(open_account)
+    window.account_button = account_button  # test hook
 
     def report(message: str, error: bool = False) -> None:
         status.setText(message)

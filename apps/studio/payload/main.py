@@ -143,6 +143,12 @@ def build_window(project_root: Path | None = None):
             button.setObjectName("primary")
         button.setProperty("action", slot)
         toolbar.addWidget(button)
+    account_button = QPushButton("Account")
+    account_button.setObjectName("accountButton")
+    account_button.setToolTip("Sign in to keep these projects backed up")
+    account_button.setProperty("action", "account")
+    toolbar.addWidget(account_button)
+    window.account_button = account_button  # test hook
     toolbar.addStretch(1)
     key_label = QLabel("")
     key_label.setObjectName("muted")
@@ -333,6 +339,17 @@ def build_window(project_root: Path | None = None):
             log(f"signed by {verified.key_id}")
         status.setText("package verified")
 
+    def open_account() -> None:
+        """Sign in, sync, or sign out of the Zaod account."""
+        try:
+            import zaodaccount
+        except ImportError as error:  # the shared module is not on this system
+            status.setText(f"The account window is unavailable: {error}")
+            return
+        dialog = zaodaccount.build_dialog(window)
+        dialog.exec()
+        refresh_tree()
+
     def find_next() -> None:
         needle = find.text()
         if not needle:
@@ -358,6 +375,7 @@ def build_window(project_root: Path | None = None):
                     "build": action_build,
                     "run": action_run,
                     "verify": action_verify,
+                    "account": open_account,
                 }[action]
             )
     tree.itemActivated.connect(lambda item, _column: open_file(item.data(0, Qt.ItemDataRole.UserRole)))
