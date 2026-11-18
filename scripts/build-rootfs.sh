@@ -474,15 +474,32 @@ say "uncompressed rootfs: ${uncompressed_mb} MB (limit ${MAX_UNCOMPRESSED_MB} MB
 mkdir -p "$OUT_DIR"
 say "squashing with zstd level $SQUASH_LEVEL"
 as_root rm -f "$SQUASHFS"
+# Every path used to be forced to uid 0 here with -all-root. That flag is what
+# handed /home/zaodlive back to root: the live account could not write its own
+# home inside the image, labwc and the panel died on their config and cache
+# directories, and iso-77 booted to a wallpaper with no desktop on it. The
+# ownership the rootfs carries is the ownership the image ships.
 as_root mksquashfs "$ROOTFS_DIR" "$SQUASHFS" \
   -comp zstd -Xcompression-level "$SQUASH_LEVEL" \
-  -noappend -all-root -no-progress
+  -noappend -no-progress
 as_root chown "$(id -u):$(id -g)" "$SQUASHFS" 2>/dev/null || true
 
 say "writing reproducible rootfs tarball"
 as_root tar -C "$ROOTFS_DIR" --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
   --numeric-owner --owner=0 --group=0 --format=posix -cf "$ROOTFS_TARBALL" .
 as_root chown "$(id -u):$(id -g)" "$ROOTFS_TARBALL" 2>/dev/null || true
+
+# Read the ownership back out of the squashfs, not out of the build tree: the
+# rootfs on disk was correct while the image was not, which is how iso-76 and
+# iso-77 both shipped a home owned by root.
+live_uid=$(as_root chroot "$ROOTFS_DIR" /usr/bin/id -u "$LIVE_USER")
+live_owner=$(unsquashfs -lln "$SQUASHFS" "home/$LIVE_USER" 2>/dev/null \
+  | tail -n 1 | awk '{print $2}')
+if [ "$live_owner" != "$live_uid/$live_uid" ]; then
+  fail "the image gives /home/$LIVE_USER to $live_owner, not $live_uid/$live_uid: a session cannot write that home"
+fi
+say "live home in the image: /home/$LIVE_USER owned by $live_owner"
+
 sha256sum "$ROOTFS_TARBALL" > "$ROOTFS_TARBALL.sha256"
 sha256sum "$SQUASHFS" > "$SQUASHFS.sha256"
 

@@ -24,6 +24,20 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 # back to the login box, and the reason was gone by the time the person could ask
 # about it. Keep it. If the home is not writable the log falls back to /tmp, so a
 # broken home can no longer hide the message that explains it.
+# A home the session cannot write is a build bug, not a login failure - and two
+# images shipped one, so the person was left looking at a wallpaper with no
+# desktop on it. Give the session a home in RAM instead of starting nothing: the
+# compositor and the panel write their config and cache there, the desktop comes
+# up, and the log below still records what happened.
+if ! { touch "$HOME/.zaod-write-probe" && rm -f "$HOME/.zaod-write-probe"; } 2>/dev/null; then
+  echo "zaod-session: $HOME is not writable, using a home in RAM" >&2
+  RAM_HOME="/tmp/zaod-home-$(id -u)"
+  mkdir -p "$RAM_HOME" 2>/dev/null && chmod 700 "$RAM_HOME" 2>/dev/null
+  if [ -w "$RAM_HOME" ]; then
+    export HOME="$RAM_HOME"
+  fi
+fi
+
 LOG_DIR="$HOME/.zaod/logs"
 if ! mkdir -p "$LOG_DIR" 2>/dev/null || ! : >>"$LOG_DIR/session.log" 2>/dev/null; then
   LOG_DIR=/tmp
