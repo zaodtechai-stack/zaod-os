@@ -15,6 +15,11 @@ from pathlib import Path
 
 import pytest
 
+# These tests drive the real Qt windows. On a machine without PySide6 they skip
+# instead of erroring: the CI gate used to go red on every push because the plain
+# runner has no PySide6, which hid real failures behind four collection errors.
+pytest.importorskip("PySide6.QtWidgets", reason="PySide6 is not installed here")
+
 REPO = Path(__file__).resolve().parent.parent
 PAYLOAD = REPO / "apps" / "store" / "payload"
 SHARED = REPO / "apps" / "lib"
