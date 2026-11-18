@@ -252,8 +252,36 @@ def run(*command: str) -> bool:
         return False
 
 
+# Desktop entries that belong to the plumbing, not to the person using the
+# computer. They shipped in /usr/share/applications, so the grid listed
+# "Python 3.13" (with the Python logo), qt6ct, gvim, Xwayland and the portal
+# helpers between the real apps. None of them is something you open on purpose.
+HIDDEN_ENTRY_IDS = {
+    "python3", "python3.13", "idle3", "idle", "qt6ct", "gvim", "vim",
+    "xdg-desktop-portal-gtk", "org.freedesktop.Xwayland", "xwayland",
+    "thunar-bulk-rename", "thunar-settings", "avahi-discover", "blueman-manager",
+    "qv4l2", "qvidcap", "htop", "btop", "neofetch", "nvim", "micro",
+}
+
+
+def entry_is_hidden(app_id: str) -> bool:
+    """True for toolkit and plumbing entries that should never be in the grid."""
+    identifier = (app_id or "").removesuffix(".desktop")
+    if identifier.startswith("org.zaod"):
+        return False
+    if identifier.lower() in HIDDEN_ENTRY_IDS:
+        return True
+    lowered = identifier.lower()
+    parts = lowered.split(".")
+    if lowered in HIDDEN_ENTRY_IDS or parts[-1] in HIDDEN_ENTRY_IDS:
+        return True
+    head = parts[0]
+    return head.startswith("python") or head in {"gvim", "vim", "nvim"}
+
+
 def desktop_apps() -> list[Gio.AppInfo]:
-    apps = [a for a in Gio.AppInfo.get_all() if a.should_show()]
+    apps = [a for a in Gio.AppInfo.get_all()
+            if a.should_show() and not entry_is_hidden(a.get_id() or "")]
     seen = set()
     unique = []
     for app in apps:
