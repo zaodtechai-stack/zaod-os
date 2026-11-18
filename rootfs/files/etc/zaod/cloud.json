@@ -1,0 +1,5 @@
+{
+  "url": "https://dihwvemfacgodkvtpbwn.supabase.co",
+  "anon_key": "sb_publishable_1emAtJ2KxksK4xZP03-U5w_x5tRPBEM",
+  "note": "Publishable key only. Every personal row is fenced by row level security, so this key cannot reach another person's data. The service key never leaves the server."
+}

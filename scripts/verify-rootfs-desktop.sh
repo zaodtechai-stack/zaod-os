@@ -121,6 +121,11 @@ if as_root test -x "$TARGET_ROOT/usr/bin/chromium"; then
 else
   bad "chromium is missing, so the web apps cannot open"
 fi
+if as_root test -f "$TARGET_ROOT/etc/zaod/cloud.json"; then
+  ok "the cloud project is configured (accounts can be backed up)"
+else
+  bad "no cloud project is configured in the image"
+fi
 if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-cloud"; then
   ok "zaod-cloud is installed (account backup and a second computer)"
 else

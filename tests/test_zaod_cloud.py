@@ -83,8 +83,12 @@ class FakeSupabase(http.server.BaseHTTPRequestHandler):
             if self.headers.get("Authorization") != "Bearer access-token-1":
                 return self._json({"message": "no token"}, 401)
             store = self.server.rows  # type: ignore[attr-defined]
+            merges = "resolution=merge-duplicates" in (self.headers.get("Prefer") or "")
             for row in rows:
                 key = (table, row.get("local_id") or row.get("app_id") or row.get("id") or row.get("username"))
+                if key in store and not merges:
+                    # PostgREST refuses a duplicate key unless the client asks to merge.
+                    return self._json({"message": "duplicate key value violates unique constraint"}, 409)
                 store[key] = row
             return self._json(rows, 201)
         return self._json({"message": "no such route"}, 404)
@@ -197,6 +201,19 @@ def test_push_sends_the_account_scoped_to_its_own_user(cloud, local):
     assert projects[0]["document"] == {"clips": [1, 2]}
     profiles = [row for (table, _), row in server.rows.items() if table == "profiles"]
     assert profiles[0] == {"id": "user-1", "username": "ayesha"}
+
+
+def test_syncing_twice_merges_instead_of_colliding(cloud, local):
+    """The live project answered 409 until the client sent the merge preference."""
+    module, url, server = cloud
+    _client, hub = local
+    hub.create_project("Pushed twice", {"clips": [1]})
+    api = module.Supabase(url, "anon-key")
+    api.sign_in("ayesha@zaod.tech", "right password")
+    first = module.push(hub, api)
+    second = module.push(hub, api)
+    assert first == second == {"projects": 1, "installed": 0}
+    assert len([1 for (table, _k) in server.rows if table == "studio_projects"]) == 1
 
 
 def test_pull_brings_the_cloud_copy_into_the_hub(cloud, local, tmp_path, monkeypatch):

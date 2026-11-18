@@ -98,10 +98,19 @@ class Supabase:
         self.user: dict = {}
 
     # -- transport ---------------------------------------------------------
-    def _request(self, method: str, path: str, payload: dict | None = None, token: str | None = None) -> tuple[int, object]:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        payload: dict | None = None,
+        token: str | None = None,
+        prefer: str | None = None,
+    ) -> tuple[int, object]:
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         bearer = token or self.access_token
         headers = {"apikey": self.key, "Content-Type": "application/json", "Accept": "application/json"}
+        if prefer:
+            headers["Prefer"] = prefer
         if bearer:
             headers["Authorization"] = f"Bearer {bearer}"
         request = urllib.request.Request(f"{self.url}{path}", data=body, headers=headers, method=method)
@@ -206,10 +215,17 @@ class Supabase:
         return list(answer or [])
 
     def upsert(self, table: str, rows: list, on_conflict: str) -> list:
+        """Insert, or merge onto the existing row with the same key.
+
+        ``Prefer: resolution=merge-duplicates`` is what makes this an upsert rather
+        than an insert that fails the second time around, and returning the rows
+        means a caller can see what the server actually stored.
+        """
         _status, answer = self._request(
             "POST",
             f"/rest/v1/{table}?on_conflict={urllib.parse.quote(on_conflict)}",
             rows,
+            prefer="resolution=merge-duplicates,return=representation",
         )
         return list(answer or [])
 
