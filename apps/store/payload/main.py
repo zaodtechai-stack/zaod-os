@@ -25,8 +25,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
 
-import zaodapp
 import zaod_tokens as tokens
+import zaodapp
 from backend import StoreBackend, StoreError
 
 APPLICATIONS = Path("/usr/share/applications")
