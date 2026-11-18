@@ -6,5 +6,9 @@ WALLPAPER="$(cat "$HOME/.config/zaod/wallpaper" 2>/dev/null || true)"
 [ -n "$WALLPAPER" ] || WALLPAPER=/usr/share/wallpapers/zaod/collection/zaod-lake-louise.jpg
 [ -f "$WALLPAPER" ] || WALLPAPER=/usr/share/wallpapers/zaod/zaod-aurora-dark.png
 /usr/bin/swaybg -i "$WALLPAPER" -m fill &
+# The local hub behind the accounts, Studio projects and the store's install list.
+# Starting it here means the session is ready the moment the desktop appears; if it
+# is already running (a second launch) the new copy exits on the socket.
+/usr/local/bin/zaod-hub 2>/dev/null &
 /usr/local/bin/zaod-panel &
 /usr/bin/gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || true

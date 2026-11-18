@@ -11,18 +11,11 @@ name: iso
 # job, and a failed kernel build stops the release instead of silently producing
 # a Debian-kernel image.
 
+# Manual only, on purpose: a push must never spend an hour building an image
+# nobody asked for. The owner decides when an ISO is cut, so this workflow runs
+# from "Run workflow" (or `gh workflow run iso`) and not from every commit.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/**"
-      - "rootfs/**"
-      - "boot/**"
-      - "kernel/**"
-      - "apps/**"
-      - "desktop/**"
-      - "Makefile"
       - ".github/workflows/iso.yml"
 
 permissions:

@@ -121,6 +121,26 @@ if as_root test -x "$TARGET_ROOT/usr/bin/chromium"; then
 else
   bad "chromium is missing, so the web apps cannot open"
 fi
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-update"; then
+  ok "zaod-update is installed (signed updates without reinstalling)"
+else
+  bad "zaod-update is missing: an installed system could not receive fixes"
+fi
+if as_root test -f "$TARGET_ROOT/etc/zaod/update-channel.json"; then
+  ok "the update channel is configured"
+else
+  bad "no update channel is configured in the image"
+fi
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-hub"; then
+  ok "zaod-hub (the local account backend) is installed"
+else
+  bad "zaod-hub is missing: Studio and the store would have no accounts"
+fi
+if as_root test -f "$TARGET_ROOT/usr/lib/zaod/zaodhub.py"; then
+  ok "the apps' hub client is installed"
+else
+  bad "zaodhub.py is missing from /usr/lib/zaod"
+fi
 if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-webapp"; then
   ok "zaod-webapp is installed"
 else

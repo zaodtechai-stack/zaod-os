@@ -134,6 +134,25 @@ def optional_apps(installed: dict[str, dict[str, str]]) -> list[dict]:
     return items
 
 
+def remember_in_hub(app_id: str, installed: bool) -> None:
+    """Tell the local backend what this person installed.
+
+    The launch entries on disk stay the source of truth, so nothing in the store's
+    own flow waits on this: no hub, no session or a refused call only means the
+    per-user record could not be kept.
+    """
+    try:
+        from zaodhub import HubError, HubUnavailable, signed_in_hub
+    except ImportError:
+        return
+    try:
+        hub = signed_in_hub()
+        if hub.token:
+            hub.mark_installed(app_id, installed)
+    except (HubUnavailable, HubError):
+        return
+
+
 def add_optional(item: dict) -> str:
     """Add an optional app for this person, into their own XDG directories."""
     USER_APPLICATIONS.mkdir(parents=True, exist_ok=True)
@@ -532,7 +551,9 @@ def build_window(store: StoreBackend | None = None):
             return
         try:
             if item["state"] == "optional":
-                report(add_optional(item))
+                message = add_optional(item)
+                remember_in_hub(item["id"], True)
+                report(message)
                 refresh()
                 return
             if item["state"] == "installed":
@@ -560,7 +581,9 @@ def build_window(store: StoreBackend | None = None):
             return
         try:
             if item.get("repository") == "optional":
-                report(remove_optional(item))
+                message = remove_optional(item)
+                remember_in_hub(item["id"], False)
+                report(message)
                 refresh()
                 return
             backend.remove(item["id"])

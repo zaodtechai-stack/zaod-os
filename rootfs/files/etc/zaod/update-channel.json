@@ -1,0 +1,4 @@
+{
+  "url": "https://github.com/zaodtechai-stack/zaod-os/releases/latest/download/channel.json",
+  "note": "The signed update channel. Publishing an update means a new channel.json plus one signed bundle as release assets; no new ISO and no reinstall."
+}

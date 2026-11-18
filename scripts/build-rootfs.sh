@@ -199,6 +199,15 @@ as_root cp -a zaod/zaodlib "$ROOTFS_DIR/usr/lib/zaod/zaodlib"
 # The panel and Control Center share one network layer, so they cannot disagree
 # about what nmcli said.
 as_root install -m 0644 apps/lib/connectivity.py "$ROOTFS_DIR/usr/lib/zaod/connectivity.py"
+# The local backend every app signs into: accounts, Studio projects, the store's
+# per-user install list. It runs over a Unix socket, so no port is opened.
+as_root install -m 0755 services/zaod-hub/hub.py "$ROOTFS_DIR/usr/local/bin/zaod-hub"
+as_root install -m 0644 apps/lib/zaodhub.py "$ROOTFS_DIR/usr/lib/zaod/zaodhub.py"
+# Receiving updates: the channel is a release asset, so a fix reaches an installed
+# system without a new ISO and without touching anyone's data.
+as_root install -m 0755 services/zaod-update/update.py "$ROOTFS_DIR/usr/local/bin/zaod-update"
+as_root install -D -m 0644 rootfs/files/etc/zaod/update-channel.json \
+  "$ROOTFS_DIR/etc/zaod/update-channel.json"
 as_root install -m 0755 zaod/bin/zaod "$ROOTFS_DIR/usr/bin/zaod"
 as_root install -m 0755 zaod/bin/zaod-priv-helper "$ROOTFS_DIR/usr/lib/zaod/zaod-priv-helper"
 as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \
