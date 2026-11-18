@@ -16,7 +16,6 @@ name: iso
 # from "Run workflow" (or `gh workflow run iso`) and not from every commit.
 on:
   workflow_dispatch:
-      - ".github/workflows/iso.yml"
 
 permissions:
   contents: write
