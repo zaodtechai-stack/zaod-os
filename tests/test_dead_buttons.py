@@ -124,3 +124,63 @@ def test_store_launch_failure_is_a_message_not_a_traceback():
     assert "This build cannot start apps from the store" in source, \
         "a missing Gio must be reported, not raised"
     assert "could not start" in source, "a failed launch must be reported to the person"
+
+
+# ---- the live image must reach the desktop -----------------------------------
+
+def test_live_boot_never_waits_on_the_text_wizard():
+    """A live boot sat on "Your name:" and the whole desktop looked dead.
+
+    zaod-oobe.service owns tty1 and runs Before=display-manager.service, so an
+    interactive wizard on live media keeps SDDM, the panel and every app off the
+    screen. The live image has the demo account, so it must skip the wizard.
+    """
+    unit = (REPO / "desktop" / "systemd" / "zaod-oobe.service").read_text()
+    assert "Before=display-manager.service" in unit
+    assert "ConditionPathExists=!/etc/sddm.conf.d/zaod-live.conf" in unit, \
+        "live media must not run the blocking text wizard"
+    assert "ConditionPathExists=!/etc/zaod/oobe-done" in unit
+
+
+def test_live_image_ships_the_demo_account_it_skips_the_wizard_for():
+    """Skipping the wizard is only safe if the demo account can sign in."""
+    users = []
+    for path in (REPO / "rootfs").rglob("*"):
+        if path.name in {"passwd", "user-setup.sh"}:
+            users.append(path)
+    live = (REPO / "desktop" / "sddm" / "sddm.conf.d" / "zaod-live.conf").read_text()
+    assert "zaodlive" in live, "the live config must name the demo account"
+    # the account itself is created by the live image build
+    scripts = " ".join(
+        p.read_text(errors="ignore") for p in (REPO / "scripts").glob("*.sh")
+    ) + " ".join(
+        p.read_text(errors="ignore") for p in (REPO / "rootfs").rglob("*.sh")
+        if p.is_file()
+    )
+    assert "zaodlive" in scripts, "something must create the zaodlive account"
+
+
+def test_panel_autostart_restarts_it_once_and_keeps_a_log():
+    """The panel is the desktop; one crash must not leave a bare wallpaper."""
+    auto = (REPO / "desktop" / "shell" / "labwc" / "autostart").read_text()
+    assert "panel.log" in auto, "a dead panel must leave evidence"
+    assert "restarting once" in auto, "the panel should be restarted once"
+
+
+def test_live_media_signs_in_by_itself():
+    """A live boot must land on the desktop, not on a password box.
+
+    The owner's words: "desktop to open hui but aage kuch nahi hota, koi app open
+    he nahi hota". A login prompt on media whose password was never given looks
+    exactly like a desktop that opens nothing, so the live session signs in.
+    """
+    live = (REPO / "desktop" / "sddm" / "sddm.conf.d" / "zaod-live.conf").read_text()
+    assert "[Autologin]" in live
+    assert "User=zaodlive" in live
+    assert "Session=zaod" in live
+
+    # the installed system must still ask for a password
+    installed = (REPO / "desktop" / "sddm" / "sddm.conf.d" / "zaod.conf").read_text()
+    # an [Autologin] block without User= never signs anyone in, which is what the
+    # installed image keeps; a User= line would be a real hole
+    assert "User=" not in installed

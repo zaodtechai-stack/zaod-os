@@ -10,5 +10,17 @@ WALLPAPER="$(cat "$HOME/.config/zaod/wallpaper" 2>/dev/null || true)"
 # Starting it here means the session is ready the moment the desktop appears; if it
 # is already running (a second launch) the new copy exits on the socket.
 /usr/local/bin/zaod-hub 2>/dev/null &
-/usr/local/bin/zaod-panel &
+# The panel is the desktop: if it fails the person sees a wallpaper and nothing
+# else, with no way to open anything. Keep its output, and start it again once if
+# it dies immediately, so a single crash is not a dead session.
+mkdir -p "$HOME/.zaod/logs"
+{
+  /usr/local/bin/zaod-panel 2>>"$HOME/.zaod/logs/panel.log" &
+  panel_pid=$!
+  sleep 5
+  if ! kill -0 "$panel_pid" 2>/dev/null; then
+    echo "$(date -Is) panel exited within 5s, restarting once" >>"$HOME/.zaod/logs/panel.log"
+    /usr/local/bin/zaod-panel 2>>"$HOME/.zaod/logs/panel.log" &
+  fi
+} &
 /usr/bin/gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || true

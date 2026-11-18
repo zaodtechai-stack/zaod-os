@@ -175,3 +175,30 @@ def test_a_selected_card_is_marked(window, qt_app):
     assert wait_for(qt_app, lambda: tile.isChecked()), "the picked card is not marked selected"
     checked = [c for c in cards(win) if c.isChecked()]
     assert len(checked) == 1, "more than one card looks selected"
+
+
+def test_tiles_are_250_square(qt_app, window):
+    """The owner asked for a 250x250 grid, not wide rows: the size is a promise."""
+    from PySide6.QtWidgets import QPushButton
+
+    _module, win = window
+    tiles = [b for b in win.findChildren(QPushButton) if b.objectName() == "card"]
+    assert tiles, "the store built no app tiles"
+    for tile in tiles:
+        assert (tile.width(), tile.height()) == (250, 250), \
+            f"a tile is {tile.width()}x{tile.height()}, not 250x250"
+
+
+def test_clicking_a_tile_fills_the_details_menu(qt_app, window):
+    """Any click on a tile shows that app's details with its action buttons."""
+    from PySide6.QtWidgets import QPushButton
+
+    _module, win = window
+    tiles = [b for b in win.findChildren(QPushButton) if b.objectName() == "card"]
+    tiles[-1].click()
+    qt_app.processEvents()
+    assert "Clock" in visible_text(win) or "Notes" in visible_text(win)
+    actions = {
+        b.text() for b in win.findChildren(QPushButton) if b.text()
+    }
+    assert {"Install", "Open", "Update", "Add to launcher", "Remove"} & actions, actions

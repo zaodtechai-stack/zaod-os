@@ -260,7 +260,7 @@ class UnavailableStore(StoreBackend):
 
 
 def build_window(store: StoreBackend | None = None):
-    from PySide6.QtCore import QSize, Qt
+    from PySide6.QtCore import QEvent, QObject, QSize, Qt
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import (
         QFrame,
@@ -378,7 +378,6 @@ def build_window(store: StoreBackend | None = None):
             return
         dialog = zaodaccount.build_dialog(window)
         dialog.exec()
-        refresh()
 
     account_button.clicked.connect(open_account)
     window.account_button = account_button  # test hook
@@ -491,49 +490,78 @@ def build_window(store: StoreBackend | None = None):
             secondary.setEnabled(item["state"] == "update")
 
     def card(item: dict) -> QPushButton:
+        """A 250x250 tile: big icon, name, one line, state.
+
+        The owner asked for a 250x250 grid instead of the wide rows, so every
+        app gets a square tile with room for its icon and its name, and the whole
+        tile is the button that opens the details menu.
+        """
         button = QPushButton()
         button.setCheckable(True)
         button.setObjectName("card")
         button.setAutoExclusive(True)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.setFixedSize(QSize(316, 92))
+        # The theme's base button rule sets a 30px minimum height, and a style
+        # sheet minimum outranks the widget's own sizes, so the tile collapsed to
+        # 250x208. The tile rule pins all four sides to the 250 grid the owner asked
+        # for, and the more specific selector wins over the base rule.
         button.setStyleSheet(
-            "QPushButton { text-align: left; padding: 0px; }"
-            f"QPushButton:checked {{ border: 2px solid {c['accent']}; }}"
+            # 248 + a 1px border on each side paints a 250x250 tile: a style sheet
+            # box is the content box, so the border has to come out of the 250.
+            "QPushButton#card { text-align: left; padding: 0px;"
+            " min-width: 248px; max-width: 248px; min-height: 248px; max-height: 248px; }"
+            f"QPushButton#card:checked {{ border: 2px solid {c['accent']}; }}"
         )
-        layout = QHBoxLayout(button)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(12)
+        layout = QVBoxLayout(button)
+        layout.setContentsMargins(18, 18, 18, 16)
+        layout.setSpacing(10)
+        layout.addStretch(0)
+
         badge = QLabel()
-        badge.setFixedSize(QSize(44, 44))
+        badge.setFixedSize(QSize(96, 96))
         badge.setScaledContents(True)
-        badge.setPixmap(icon_for(item.get("icon", "")).pixmap(QSize(44, 44)))
-        layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
-        column = QVBoxLayout()
-        column.setSpacing(2)
-        column.setContentsMargins(0, 0, 0, 0)
+        badge.setPixmap(icon_for(item.get("icon", "")).pixmap(QSize(96, 96)))
+        layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignHCenter)
+
         title = QLabel(item["name"])
-        title.setStyleSheet(f"font-weight: 600; color: {c['textPrimary']};")
+        title.setWordWrap(True)
+        title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        title.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {c['textPrimary']};")
+        layout.addWidget(title)
+
         summary = QLabel(item.get("summary") or "")
         summary.setObjectName("muted")
-        summary.setWordWrap(False)
-        summary.setFixedHeight(18)
+        summary.setWordWrap(True)
+        summary.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        summary.setMaximumHeight(34)
         summary.setText(summary.fontMetrics().elidedText(
-            item.get("summary") or "", Qt.TextElideMode.ElideRight, 210))
-        column.addWidget(title)
-        column.addWidget(summary)
-        if item["state"] == "optional":
-            tag = QLabel("Optional")
+            item.get("summary") or "", Qt.TextElideMode.ElideRight, 190))
+        layout.addWidget(summary)
+
+        label = {
+            "optional": "Optional",
+            "installed": "Added" if item.get("repository") == "optional" else "Installed",
+            "update": "Update",
+        }.get(item["state"])
+        if label is None and item.get("kind") == "web":
+            label = "Web app"
+        if label:
+            tag = QLabel(label)
             tag.setObjectName("caption")
-            column.addWidget(tag)
-        elif item.get("kind") == "web":
-            tag = QLabel("Web app")
-            tag.setObjectName("caption")
-            column.addWidget(tag)
-        layout.addLayout(column, 1)
+            tag.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            layout.addWidget(tag)
+        layout.addStretch(1)
         button.clicked.connect(lambda _checked=False, data=item: select(data))
         state["buttons"][item["id"]] = button
         return button
+
+    def fit_columns(_event=None) -> None:
+        """Recount tiles per row when the window is resized."""
+        width = scroll.viewport().width() if scroll.widget() else window.width()
+        columns = max(2, (max(width, 520) - 32) // 262)
+        if columns != state.get("columns"):
+            state["columns"] = columns
+            refresh()
 
     def refresh() -> None:
         items = catalogue()
@@ -543,7 +571,9 @@ def build_window(store: StoreBackend | None = None):
         visible = [item for item in items if in_chip(item, chip) and matches(item, query)]
         previous = state["selected"]["id"] if state["selected"] else None
         clear_grid()
-        columns = 3
+        # three 250px tiles plus the gaps fit the window's grid column; the
+        # count follows the window width so a maximised store shows more
+        columns = max(2, state.get("columns", 3))
         for index, item in enumerate(visible):
             grid.addWidget(
                 card(item), index // columns, index % columns,
@@ -647,6 +677,17 @@ def build_window(store: StoreBackend | None = None):
     secondary.clicked.connect(act_remove)
     sync_button.clicked.connect(sync)
 
+    class _ResizeGuard(QObject):
+        """Recount the tiles per row whenever the window changes width."""
+
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Type.Resize:
+                fit_columns()
+            return False
+
+    guard = _ResizeGuard(window)
+    window.installEventFilter(guard)
+    window._resize_guard = guard
     refresh()
     window.refresh_list = refresh
     return window

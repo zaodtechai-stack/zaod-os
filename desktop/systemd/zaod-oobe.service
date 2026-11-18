@@ -9,6 +9,12 @@
 Description=Zaod OS first-boot onboarding
 Documentation=man:zaod(1)
 ConditionPathExists=!/etc/zaod/oobe-done
+# Live media must never stop at a text prompt: the wizard owns tty1 and runs
+# Before=display-manager.service, so waiting for a name there keeps the desktop
+# off the screen entirely. That is exactly what a live boot did: it sat on
+# "Your name:" while every app, the panel and the store looked dead. The live
+# image already has the demo account zaodlive, so it goes straight to the login.
+ConditionPathExists=!/etc/sddm.conf.d/zaod-live.conf
 After=local-fs.target systemd-user-sessions.service getty@tty1.service
 Before=display-manager.service
 Conflicts=getty@tty1.service
