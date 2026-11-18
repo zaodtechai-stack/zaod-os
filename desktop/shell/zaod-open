@@ -1,0 +1,28 @@
+#!/bin/sh
+# Open a launcher entry by id: zaod-open org.zaod.store
+#
+# The same call the panel makes (Gio.AppInfo.launch), so a keybinding, the panel
+# and the store all start an app the same way - and an optional app that lives in
+# ~/.local/share/applications is found just as well as one in /usr/share.
+set -eu
+
+[ $# -ge 1 ] || { echo "usage: zaod-open APP-ID" >&2; exit 2; }
+app_id=${1%.desktop}
+
+exec /usr/bin/python3 - "$app_id" <<'PY'
+import sys
+from gi.repository import Gio
+
+wanted = sys.argv[1]
+infos = [info for info in Gio.AppInfo.get_all() if info.should_show()]
+for info in infos:
+    if (info.get_id() or "").removesuffix(".desktop") == wanted:
+        info.launch([], None)
+        raise SystemExit(0)
+for info in infos:
+    if (info.get_id() or "").removesuffix(".desktop").split(".")[-1] == wanted.split(".")[-1]:
+        info.launch([], None)
+        raise SystemExit(0)
+print(f"zaod-open: no launcher entry called {wanted}", file=sys.stderr)
+raise SystemExit(1)
+PY

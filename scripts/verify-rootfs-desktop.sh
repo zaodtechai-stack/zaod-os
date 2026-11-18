@@ -127,9 +127,27 @@ else
   bad "zaod-webapp is missing"
 fi
 for webapp in youtube whatsapp instagram facebook tiktok x; do
-  have "/usr/share/applications/zaod-web-$webapp.desktop"
+  have "/usr/share/zaod/optional/webapps/zaod-web-$webapp.desktop"
 done
-have /opt/zaod/apps/studio/payload/main.py
+have /usr/share/zaod/optional/webapps/webapps.json
+have /usr/share/zaod/optional/apps/studio/payload/main.py
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-open"; then
+  ok "zaod-open is installed"
+else
+  bad "zaod-open is missing, so the Super+key bindings would do nothing"
+fi
+# Touchpad taps and two-finger right click are off in libinput's defaults; on a
+# laptop that is indistinguishable from a broken mouse.
+if as_root grep -q "<tap>yes</tap>" "$TARGET_ROOT/etc/xdg/labwc/rc.xml" 2>/dev/null; then
+  ok "tap-to-click is enabled for touchpads"
+else
+  bad "rc.xml does not enable tap-to-click"
+fi
+if as_root test -f "$TARGET_ROOT/usr/share/applications/zaod-web-youtube.desktop"; then
+  bad "a social web app is installed in the launcher without being asked for"
+else
+  ok "no social web app is installed by default"
+fi
 
 # 3e. The wallpapers have to be the full-size ones plus thumbnails for the picker.
 thumbs=$(as_root find "$TARGET_ROOT/usr/share/wallpapers/zaod/collection/thumbs" \

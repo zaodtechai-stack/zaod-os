@@ -15,11 +15,39 @@
     <font place="MenuItem"><name>Inter</name><size>10</size></font>
     <font place="OnScreenDisplay"><name>Inter</name><size>12</size></font>
   </theme>
+  <!-- libinput defaults leave tap-to-click OFF, which on a laptop reads as
+       "clicks do not work": tapping does nothing and a two-finger right click is
+       never sent. Both are turned on for touchpads here. -->
+  <libinput>
+    <device category="touchpad">
+      <tap>yes</tap>
+      <tapButtonMap>left-right-middle</tapButtonMap>
+      <clickMethod>buttonAreas</clickMethod>
+      <naturalScroll>no</naturalScroll>
+      <middleEmulation>yes</middleEmulation>
+      <disableWhileTyping>yes</disableWhileTyping>
+      <accelProfile>adaptive</accelProfile>
+    </device>
+    <device category="touch">
+      <tap>yes</tap>
+      <naturalScroll>no</naturalScroll>
+    </device>
+    <device category="mouse">
+      <naturalScroll>no</naturalScroll>
+      <accelProfile>adaptive</accelProfile>
+    </device>
+  </libinput>
   <keyboard>
     <default />
-    <keybind key="A-Return"><action name="Execute" command="org.zaod.terminal"/></keybind>
-    <keybind key="W-d"><action name="Execute" command="org.zaod.store"/></keybind>
-    <keybind key="W-e"><action name="Execute" command="org.zaod.files"/></keybind>
+    <!-- Super+key opens something that exists: zaod-open resolves a launcher
+         entry the same way the panel does. The old binds named app ids as
+         commands ("org.zaod.terminal"), which is not a program and did nothing. -->
+    <keybind key="W-Return"><action name="Execute" command="/usr/bin/foot" /></keybind>
+    <keybind key="W-d"><action name="Execute" command="/usr/local/bin/zaod-open org.zaod.store" /></keybind>
+    <keybind key="W-e"><action name="Execute" command="/usr/bin/thunar" /></keybind>
+    <keybind key="W-c"><action name="Execute" command="/usr/local/bin/zaod-open org.zaod.control-center" /></keybind>
+    <keybind key="W-s"><action name="Execute" command="/usr/local/bin/zaod-open org.zaod.studio" /></keybind>
+    <keybind key="W-space"><action name="Execute" command="/usr/local/bin/zaod-open org.zaod.store" /></keybind>
     <keybind key="Print"><action name="Execute" command="zaod-screenshot" /></keybind>
     <keybind key="W-q"><action name="Close" /></keybind>
     <keybind key="W-Tab"><action name="NextWindow" /></keybind>

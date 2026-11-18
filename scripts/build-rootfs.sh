@@ -183,7 +183,9 @@ as_root bash desktop/scripts/apply-desktop.sh --root "$ROOTFS_DIR"
 as_root python3 scripts/install-app-set.py --root "$ROOTFS_DIR"
 # The built-in web apps: YouTube, WhatsApp, Instagram, Facebook, TikTok and X as
 # launcher entries that open in their own Chromium window.
-as_root python3 scripts/install-web-apps.py --root "$ROOTFS_DIR"
+# The web apps and Studio are optional: they are staged so the store can add them
+# per person, and nothing social lands in a launcher by default.
+as_root python3 scripts/install-web-apps.py --root "$ROOTFS_DIR" --optional
 as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod"
 as_root install -m 0644 desktop/webapps/webapps.json "$ROOTFS_DIR/usr/share/zaod/webapps.json"
 

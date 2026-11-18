@@ -24,7 +24,9 @@ REPO = Path(__file__).resolve().parent.parent
 # its toolkit in studio/zaodstudio at the top of the tree, so a payload copied on
 # its own cannot import it and the app dies with ModuleNotFoundError.
 EXTRA_MODULES = {"studio": [REPO / "studio" / "zaodstudio"]}
-SKIP: set[str] = set()  # every first-party app in apps/ belongs in the image
+# Studio is optional: it ships in /usr/share/zaod/optional/apps and the store adds
+# it per person, so a desktop without a developer tool is the default.
+OPTIONAL_APPS = {"studio"}
 
 
 def categories(manifest: dict) -> str:
@@ -35,7 +37,7 @@ def categories(manifest: dict) -> str:
 def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
     installed: list[str] = []
     for app in sorted(apps_dir.iterdir()):
-        if not app.is_dir() or app.name in SKIP:
+        if not app.is_dir():
             continue
         manifest_path = app / "MANIFEST.json"
         payload = app / "payload"
@@ -47,7 +49,11 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
         # Paths in a launcher entry are read inside the image, never on the
         # machine that built it: an Exec holding this build's $ROOTFS path is a
         # launcher that silently does nothing on real hardware.
-        image_dir = Path("/opt/zaod/apps") / slug
+        optional = app.name in OPTIONAL_APPS
+        if optional:
+            image_dir = Path("/usr/share/zaod/optional/apps") / slug
+        else:
+            image_dir = Path("/opt/zaod/apps") / slug
         target = root / image_dir.relative_to("/")
         entry = manifest.get("entry") or {}
         exe = entry.get("exec") or "payload/main.py"
@@ -73,12 +79,21 @@ def install(root: Path, apps_dir: Path, dry_run: bool) -> list[str]:
                 shutil.copytree(extra, target / "payload" / extra.name)
         shutil.copy2(manifest_path, target / "MANIFEST.json")
         icon = app / "icon.svg"
-        icon_target = root / "usr/share/icons/hicolor/scalable/apps" / f"{app_id}.svg"
+        if optional:
+            icon_target = target / "icon.svg"
+        else:
+            icon_target = root / "usr/share/icons/hicolor/scalable/apps" / f"{app_id}.svg"
         icon_target.parent.mkdir(parents=True, exist_ok=True)
         if icon.is_file():
             shutil.copy2(icon, icon_target)
             shutil.copy2(icon, target / "icon.svg")
-        desktop = root / "usr/share/applications" / f"{app_id}.desktop"
+        if optional:
+            # The store copies this entry into ~/.local/share/applications when
+            # the person asks for the app, so it is not in the launcher by
+            # default.
+            desktop = target / f"{app_id}.desktop"
+        else:
+            desktop = root / "usr/share/applications" / f"{app_id}.desktop"
         desktop.parent.mkdir(parents=True, exist_ok=True)
         desktop.write_text(
             "[Desktop Entry]\n"

@@ -63,13 +63,12 @@ def test_launcher_exec_uses_the_image_path(tmp_path: Path) -> None:
 
 
 def test_every_shipped_app_points_into_the_image() -> None:
-    installer = load_installer()
     apps_dir = REPO / "apps"
     for app in sorted(apps_dir.iterdir()):
         manifest = app / "MANIFEST.json"
         if not manifest.is_file() or not (app / "payload").is_dir():
             continue
-        if app.name in installer.SKIP:
+        if not (app / "MANIFEST.json").is_file():
             continue
         data = json.loads(manifest.read_text())
         entry = data.get("entry") or {}

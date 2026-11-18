@@ -19,15 +19,21 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 
 
-def install(root: Path, manifest_path: Path, dry_run: bool) -> list[str]:
+def install(root: Path, manifest_path: Path, dry_run: bool, optional: bool = False) -> list[str]:
     apps = json.loads(manifest_path.read_text())["apps"]
     installed: list[str] = []
+    if optional and not dry_run:
+        # The store reads this manifest to build the optional catalogue.
+        staged = root / "usr/share/zaod/optional/webapps/webapps.json"
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(manifest_path, staged)
     for app in apps:
         app_id = app["id"]
         if dry_run:
             installed.append(app_id)
             continue
-        desktop = root / "usr/share/applications" / f"{app_id}.desktop"
+        base = "usr/share/zaod/optional/webapps" if optional else "usr/share/applications"
+        desktop = root / base / f"{app_id}.desktop"
         desktop.parent.mkdir(parents=True, exist_ok=True)
         desktop.write_text(
             "[Desktop Entry]\n"
@@ -46,7 +52,8 @@ def install(root: Path, manifest_path: Path, dry_run: bool) -> list[str]:
         if not icon_src.is_file():
             print(f"install-web-apps: missing icon {icon_src}", file=sys.stderr)
             return []
-        target = root / "usr/share/icons/hicolor/scalable/apps" / f"{app_id}.svg"
+        icon_base = "usr/share/zaod/optional/webapps/icons" if optional else "usr/share/icons/hicolor/scalable/apps"
+        target = root / icon_base / f"{app_id}.svg"
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(icon_src, target)
         installed.append(app_id)
@@ -57,6 +64,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default="/")
     parser.add_argument("--manifest", default=str(REPO / "desktop/webapps/webapps.json"))
+    parser.add_argument(
+        "--optional",
+        action="store_true",
+        help="stage into /usr/share/zaod/optional/webapps so the store adds them per person",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -64,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     if not (root / "etc").is_dir():
         print(f"install-web-apps: {root} is not a root filesystem", file=sys.stderr)
         return 1
-    installed = install(root, Path(args.manifest), args.dry_run)
+    installed = install(root, Path(args.manifest), args.dry_run, args.optional)
     if not installed:
         print("install-web-apps: nothing installed", file=sys.stderr)
         return 1
