@@ -27,14 +27,17 @@ Rectangle {
 
     property int sessionIndex: sessionModel.lastIndex
 
-    function cycleSession() {
-        var count = Math.max(1, sessionModel.rowCount())
-        root.sessionIndex = (root.sessionIndex + 1) % count
-    }
-
     function login() {
         errorLabel.text = ""
         sddm.login(userInput.text, passwordInput.text, root.sessionIndex)
+    }
+
+    Component.onCompleted: {
+        if (userInput.text.length > 0) {
+            passwordInput.forceActiveFocus()
+        } else {
+            userInput.forceActiveFocus()
+        }
     }
 
     Image {
@@ -51,7 +54,7 @@ Rectangle {
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: rounded(24)
+        spacing: rounded(32)
         width: rounded(360)
 
         Text {
@@ -63,15 +66,15 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: rounded(280)
+            Layout.preferredHeight: rounded(248)
             radius: rounded(16)
             color: root.surface
             opacity: 0.92
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: rounded(24)
-                spacing: rounded(12)
+                anchors.margins: rounded(28)
+                spacing: rounded(20)
 
                 // The account name is a field, not a label. Live media asks for a
                 // login like the installed system does, and on a fresh live boot
@@ -158,40 +161,12 @@ Rectangle {
                         clip: true
                         onAccepted: root.login()
                         KeyNavigation.backtab: userInput
-                        KeyNavigation.tab: sessionButton
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.IBeamCursor
                         onClicked: passwordInput.forceActiveFocus()
-                    }
-                }
-
-                // Session chooser: cycles the session list, as before, drawn from
-                // primitives so it cannot fail to load.
-                Rectangle {
-                    id: sessionButton
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: rounded(36)
-                    radius: rounded(8)
-                    color: sessionArea.containsMouse ? "#2E3138" : "#24262B"
-                    border.width: 1
-                    border.color: "#3A3D44"
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: sessionModel.getString(root.sessionIndex) || qsTr("Session")
-                        color: root.surfaceText
-                        font { family: "Inter"; pixelSize: 12 }
-                    }
-
-                    MouseArea {
-                        id: sessionArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.cycleSession()
                     }
                 }
 
@@ -293,10 +268,8 @@ Rectangle {
         function onLoginFailed() {
             errorLabel.text = qsTr("Wrong user name or password")
             passwordInput.text = ""
+            passwordInput.forceActiveFocus()
         }
     }
 
-    Component.onCompleted: {
-        passwordInput.forceActiveFocus()
-    }
 }

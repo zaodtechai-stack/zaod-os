@@ -19,6 +19,38 @@ export _JAVA_AWT_WM_NONREPARENTING=1
 # A live session runs from read-only media: keep every cache in RAM.
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
-# A panel that fails to start must not take the session with it, but it must be
-# reported where a person can see it if they open a terminal.
-exec /usr/bin/labwc
+# A compositor that cannot start used to leave nothing behind: its own error was
+# written to a terminal nobody was looking at, SDDM took the session straight
+# back to the login box, and the reason was gone by the time the person could ask
+# about it. Keep it. If the home is not writable the log falls back to /tmp, so a
+# broken home can no longer hide the message that explains it.
+LOG_DIR="$HOME/.zaod/logs"
+if ! mkdir -p "$LOG_DIR" 2>/dev/null || ! : >>"$LOG_DIR/session.log" 2>/dev/null; then
+  LOG_DIR=/tmp
+fi
+SESSION_LOG="$LOG_DIR/session.log"
+
+{
+  printf '\n=== %s zaod-session start: user=%s home=%s\n' \
+    "$(date -Is)" "$(id -un)" "$HOME"
+  id
+  printf 'XDG_RUNTIME_DIR=%s XDG_SEAT=%s XDG_VTNR=%s WAYLAND_DISPLAY=%s\n' \
+    "${XDG_RUNTIME_DIR:-}" "${XDG_SEAT:-}" "${XDG_VTNR:-}" "${WAYLAND_DISPLAY:-}"
+  printf 'home writable: '
+  if touch "$HOME/.zaod-write-probe" 2>/dev/null; then
+    rm -f "$HOME/.zaod-write-probe"
+    printf 'yes\n'
+  else
+    printf 'NO\n'
+  fi
+} >>"$SESSION_LOG" 2>&1
+
+# Run the compositor with its own output captured, then say why the session ended
+# and with which status. SDDM reads a non-zero exit as a failed session and
+# returns to the login box, so this line is the only account of the failure.
+/usr/bin/labwc >>"$SESSION_LOG" 2>&1
+status=$?
+{
+  printf '=== %s labwc exited with status %s\n' "$(date -Is)" "$status"
+} >>"$SESSION_LOG" 2>&1
+exit "$status"

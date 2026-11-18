@@ -347,6 +347,16 @@ if ! as_root chroot "$ROOTFS_DIR" /usr/bin/getent passwd zaodlive >/dev/null 2>&
   as_root chroot "$ROOTFS_DIR" /usr/sbin/useradd --create-home --shell /bin/bash \
     --groups wheel,audio,video,render,input,netdev zaodlive
 fi
+# The live home has to belong to the live account.
+#
+# /home/zaodlive exists in the rootfs before useradd runs, so useradd leaves it
+# owned by root with mode 0700 - and everything a session writes lives under
+# $HOME. iso-74 started the desktop and lost it again: labwc, the panel,
+# wireplumber and every app were refused "Permission denied" on their own config
+# and cache directories, and the console sat at "change directory failed:
+# Permission denied" for the same reason. Own the home, then prove it.
+as_root chown --recursive "$LIVE_USER:$LIVE_USER" "$ROOTFS_DIR/home/$LIVE_USER"
+as_root chmod 0755 "$ROOTFS_DIR/home/$LIVE_USER"
 # The live account needs a password a person can actually type.
 #
 # iso-16 .. iso-24 ran `passwd --lock zaodlive`. That is invisible on the SDDM

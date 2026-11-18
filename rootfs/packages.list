@@ -104,6 +104,7 @@ xdg-user-dirs
 ## session helpers
 polkitd
 pkexec
+sudo
 bubblewrap
 xdg-utils
 desktop-file-utils

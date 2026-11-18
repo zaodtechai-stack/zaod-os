@@ -271,8 +271,22 @@ def check_zaod_session(report: Report) -> None:
     for stray in (DESKTOP / "sessions").glob("plasma*.desktop"):
         report.check(False, f"no Plasma session entry ships: {stray.name}")
 
+    build = (REPO_ROOT / "scripts" / "build-rootfs.sh").read_text()
+    report.contains(
+        build,
+        "chown --recursive",
+        "the live account owns its home (a root-owned home ends the session)",
+    )
+
     script = (DESKTOP / "shell" / "zaod-session").read_text()
-    report.contains(script, "exec /usr/bin/labwc", "the compositor is labwc")
+    report.check(
+        "exec /usr/bin/labwc" in script or "/usr/bin/labwc >>" in script,
+        "the compositor is labwc",
+    )
+    report.contains(script, 'SESSION_LOG', "the session keeps the compositor's own output")
+    report.contains(
+        script, "labwc exited with status", "the session records how the compositor ended"
+    )
     report.contains(script, "XDG_CURRENT_DESKTOP=Zaod", "the session says which desktop it is")
 
     installer = (DESKTOP / "scripts" / "apply-desktop.sh").read_text()
