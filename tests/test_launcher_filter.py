@@ -60,3 +60,11 @@ def test_grid_is_rebuilt_every_time_the_launcher_opens():
     source = PANEL.read_text()
     body = source.split("def toggle_launcher", 1)[1].split("def launch", 1)[0]
     assert re.search(r"launcher\.fill\(\)", body), "toggle_launcher must refresh the grid"
+
+
+def test_panel_pins_every_gi_version_it_imports():
+    """Importing Gdk without require_version made the panel log a PyGIWarning."""
+    source = PANEL.read_text()
+    imported = {"Gtk", "Gdk"}
+    for namespace in imported:
+        assert f'gi.require_version("{namespace}"' in source, namespace
