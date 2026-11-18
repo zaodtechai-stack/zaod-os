@@ -206,6 +206,9 @@ as_root install -m 0644 apps/lib/zaodhub.py "$ROOTFS_DIR/usr/lib/zaod/zaodhub.py
 # Receiving updates: the channel is a release asset, so a fix reaches an installed
 # system without a new ISO and without touching anyone's data.
 as_root install -m 0755 services/zaod-update/update.py "$ROOTFS_DIR/usr/local/bin/zaod-update"
+# The hosted half: sign in to the Supabase-backed account to back this computer up
+# and use the same account on a second one. Local files stay the truth offline.
+as_root install -m 0755 services/zaod-cloud/cloud.py "$ROOTFS_DIR/usr/local/bin/zaod-cloud"
 as_root install -D -m 0644 rootfs/files/etc/zaod/update-channel.json \
   "$ROOTFS_DIR/etc/zaod/update-channel.json"
 as_root install -m 0755 zaod/bin/zaod "$ROOTFS_DIR/usr/bin/zaod"

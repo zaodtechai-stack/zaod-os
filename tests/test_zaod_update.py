@@ -78,7 +78,7 @@ def test_a_bundle_that_does_not_match_its_checksum_is_refused(update, tmp_path):
 
 
 def test_a_wrong_size_is_refused_even_with_the_right_hash(update, tmp_path):
-    channel, bundle = publish(tmp_path)
+    channel, _bundle = publish(tmp_path)
     document = json.loads(channel.read_text())
     document["bundle"]["size"] = 999
     channel.write_text(json.dumps(document))

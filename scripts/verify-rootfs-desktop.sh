@@ -121,6 +121,11 @@ if as_root test -x "$TARGET_ROOT/usr/bin/chromium"; then
 else
   bad "chromium is missing, so the web apps cannot open"
 fi
+if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-cloud"; then
+  ok "zaod-cloud is installed (account backup and a second computer)"
+else
+  bad "zaod-cloud is missing: accounts could not be backed up"
+fi
 if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-update"; then
   ok "zaod-update is installed (signed updates without reinstalling)"
 else
