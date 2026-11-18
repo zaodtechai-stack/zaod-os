@@ -102,6 +102,36 @@ if [ -f /usr/share/applications/org.zaod.notes.desktop ] && [ -x /usr/bin/python
   fi
 fi
 
+# Every window must wear its own icon. Qt falls back to its generic Python logo
+# when an app sets none, and that is exactly what showed up in the bar.
+icon_log="$RUNTIME/app-icons.log"
+checked=$((checked + 1))
+if /usr/bin/python3 >"$icon_log" 2>&1 <<'PYICON'
+import glob, os, sys
+sys.path.insert(0, "/opt/zaod/lib")
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+from PySide6.QtWidgets import QApplication
+import zaodapp
+app = QApplication([])
+missing = []
+for entry in sorted(glob.glob("/usr/share/applications/org.zaod.*.desktop")):
+    app_id = os.path.basename(entry)[:-len(".desktop")]
+    icon = zaodapp.window_icon(app_id)
+    if icon.isNull():
+        missing.append(app_id)
+print("checked", len(glob.glob("/usr/share/applications/org.zaod.*.desktop")), "entries")
+if missing:
+    print("no window icon:", ", ".join(missing))
+    sys.exit(1)
+PYICON
+then
+  echo "  ok   every app has its own window icon (no toolkit logo)"
+else
+  failures=$((failures + 1))
+  echo "  FAIL an app would show the toolkit's default icon" >&2
+  sed -n '1,15p' "$icon_log" | sed 's/^/    /' >&2
+fi
+
 # The panel is the desktop: if it dies, the screen has no bar, no clock and no
 # way to any app. It is started exactly as the session starts it, left alone for
 # a few seconds and screenshotted, so "panel starts but draws nothing" fails too.

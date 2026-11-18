@@ -341,6 +341,45 @@ def make_app(argv: list[str] | None = None):
     return app
 
 
+def window_icon(app_id: str):
+    """The app's own icon, or the Zaod mark - never the toolkit's default.
+
+    Without this every PySide6 window carries Qt's generic icon (the Python
+    logo), which is what shows up in the bar and the window switcher.
+    """
+    from pathlib import Path as _Path
+
+    from PySide6.QtGui import QIcon
+
+    icon = QIcon.fromTheme(app_id)
+    if not icon.isNull():
+        return icon
+    for size in ("128x128", "64x64", "48x48", "scalable"):
+        for suffix in ("png", "svg"):
+            path = _Path(f"/usr/share/icons/hicolor/{size}/apps/{app_id}.{suffix}")
+            if path.exists():
+                return QIcon(str(path))
+    for fallback in ("/usr/share/zaod/artwork/logo.png", "/usr/share/zaod/logo.png"):
+        if _Path(fallback).exists():
+            return QIcon(fallback)
+    return QIcon()
+
+
+def app_id_from_argv(argv: list[str] | None = None) -> str:
+    """org.zaod.<name> for a payload running from /opt/zaod/apps/<name>/."""
+    given = os.environ.get("ZAOD_APP_ID", "")
+    if given:
+        return given
+    argv = argv if argv is not None else sys.argv
+    for part in argv:
+        text = str(part)
+        if "/apps/" in text:
+            name = text.split("/apps/", 1)[1].split("/", 1)[0]
+            if name:
+                return f"org.zaod.{name}"
+    return "org.zaod"
+
+
 def base_window(title: str, width: int = 520, height: int = 380, *, margins: int | None = None):
     """A window with a 4 px grid layout and the app title already in place."""
     from PySide6.QtCore import Qt
@@ -353,6 +392,7 @@ def base_window(title: str, width: int = 520, height: int = 380, *, margins: int
     window.setObjectName("zaodWindow")
     window.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
     window.setWindowTitle(title)
+    window.setWindowIcon(window_icon(app_id_from_argv()))
     window.resize(width, height)
     layout = QVBoxLayout(window)
     layout.setContentsMargins(margins, margins, margins, margins)
@@ -370,6 +410,7 @@ def base_window(title: str, width: int = 520, height: int = 380, *, margins: int
 def run(window_builder, argv: list[str] | None = None) -> int:
     """Run an app: build the window, show it, enter the Qt event loop."""
     app = make_app(argv)
+    app.setWindowIcon(window_icon(app_id_from_argv(argv)))
     window = window_builder()
     window.show()
     return app.exec()

@@ -102,14 +102,28 @@ def build_window(
             self.signals = Signals()
 
         def run(self):
+            """Do the work, then report - unless the page is already gone.
+
+            Switching pages deletes the widgets a job was going to report to, and
+            emitting into a deleted signal source raised
+            "RuntimeError: Signal source has been deleted" in the terminal. The
+            answer is simply not needed any more, so it is dropped.
+            """
             try:
                 result = self.fn()
             except (NetworkError, SettingError) as error:
-                self.signals.failed.emit(str(error))
+                self._emit(self.signals.failed, str(error))
             except Exception as error:  # noqa: BLE001 - shown to the person, never swallowed
-                self.signals.failed.emit(f"{type(error).__name__}: {error}")
+                self._emit(self.signals.failed, f"{type(error).__name__}: {error}")
             else:
-                self.signals.done.emit(result)
+                self._emit(self.signals.done, result)
+
+        @staticmethod
+        def _emit(signal, payload) -> None:
+            try:
+                signal.emit(payload)
+            except RuntimeError:
+                pass  # the widget that would show it has been closed or replaced
 
     jobs: list[Job] = []
 

@@ -727,6 +727,12 @@ class Panel(Gtk.Window):
         except (OSError, ValueError, IndexError):
             return 60.0
 
+    def set_volume(self, scale: Gtk.Scale) -> None:
+        level = int(scale.get_value())
+        # pipewire is the only sound server in the image, so wpctl is the tool
+        # that is actually there; pactl used to be called and never existed.
+        run("/usr/bin/wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{level}%")
+
     def battery_text(self) -> str:
         for supply in Path("/sys/class/power_supply").glob("BAT*"):
             try:
