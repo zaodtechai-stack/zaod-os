@@ -26,6 +26,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
 
 import zaodapp
+import zaod_tokens as tokens
 from backend import StoreBackend, StoreError
 
 APPLICATIONS = Path("/usr/share/applications")
@@ -321,12 +322,12 @@ def build_window(store: StoreBackend | None = None):
     window.content.addLayout(chips_row)
 
     body = QHBoxLayout()
-    body.setSpacing(16)
+    body.setSpacing(tokens.SPACING['6'])
     window.content.addLayout(body, 1)
 
     grid_host = QWidget()
     grid = QGridLayout(grid_host)
-    grid.setSpacing(12)
+    grid.setSpacing(tokens.SPACING['4'])
     grid.setContentsMargins(0, 0, 0, 0)
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
@@ -337,8 +338,11 @@ def build_window(store: StoreBackend | None = None):
     detail_panel = QFrame()
     detail_panel.setObjectName("preview")
     detail_layout = QVBoxLayout(detail_panel)
-    detail_layout.setContentsMargins(18, 18, 18, 18)
-    detail_layout.setSpacing(10)
+    detail_layout.setContentsMargins(
+        tokens.SPACING['5'], tokens.SPACING['5'],
+        tokens.SPACING['5'], tokens.SPACING['5'],
+    )
+    detail_layout.setSpacing(tokens.SPACING['3'])
     detail_icon = QLabel()
     detail_icon.setFixedSize(QSize(72, 72))
     detail_icon.setScaledContents(True)
@@ -508,13 +512,22 @@ def build_window(store: StoreBackend | None = None):
         button.setStyleSheet(
             # 248 + a 1px border on each side paints a 250x250 tile: a style sheet
             # box is the content box, so the border has to come out of the 250.
+            # The tile reads as a card of its own: a raised surface, the 16 px
+            # radius from the scale rather than the 8 px of a toolbar button, and
+            # an accent ring on the one tile that is selected.
             "QPushButton#card { text-align: left; padding: 0px;"
+            f" background: {c['surfaceRaised']}; border: 1px solid {c['border']};"
+            f" border-radius: {tokens.RADII['xl']}px;"
             " min-width: 248px; max-width: 248px; min-height: 248px; max-height: 248px; }"
+            f"QPushButton#card:hover {{ border-color: {c['borderStrong']}; }}"
             f"QPushButton#card:checked {{ border: 2px solid {c['accent']}; }}"
         )
         layout = QVBoxLayout(button)
-        layout.setContentsMargins(18, 18, 18, 16)
-        layout.setSpacing(10)
+        layout.setContentsMargins(
+            tokens.SPACING['5'], tokens.SPACING['5'],
+            tokens.SPACING['5'], tokens.SPACING['4'],
+        )
+        layout.setSpacing(tokens.SPACING['3'])
         layout.addStretch(0)
 
         badge = QLabel()
@@ -524,9 +537,9 @@ def build_window(store: StoreBackend | None = None):
         layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignHCenter)
 
         title = QLabel(item["name"])
+        title.setObjectName("cardTitle")
         title.setWordWrap(True)
         title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        title.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {c['textPrimary']};")
         layout.addWidget(title)
 
         summary = QLabel(item.get("summary") or "")

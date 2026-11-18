@@ -136,6 +136,10 @@ def stylesheet() -> str:
         padding-bottom: {tokens.SPACING['1']}px;
     }}
     QLabel#subtitle {{ font-size: {subtitle}px; color: {c['textSecondary']}; }}
+    /* the name on a tile: the subtitle step of the scale, at semibold */
+    QLabel#cardTitle {{
+        font-size: {subtitle}px; font-weight: 600; color: {c['textPrimary']};
+    }}
     QLabel#muted {{ color: {c['textSecondary']}; }}
     QLabel#hero {{ font-size: {hero}px; font-weight: 600; color: {c['textPrimary']}; }}
     QLabel#metric {{ font-size: {metric}px; font-weight: 600; color: {c['textPrimary']}; }}
