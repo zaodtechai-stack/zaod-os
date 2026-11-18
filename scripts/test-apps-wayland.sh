@@ -108,7 +108,13 @@ icon_log="$RUNTIME/app-icons.log"
 checked=$((checked + 1))
 if /usr/bin/python3 >"$icon_log" 2>&1 <<'PYICON'
 import glob, os, sys
-sys.path.insert(0, "/opt/zaod/lib")
+for candidate in sorted(glob.glob("/opt/zaod/apps/*/payload/lib")):
+    if os.path.exists(os.path.join(candidate, "zaodapp.py")):
+        sys.path.insert(0, candidate)
+        break
+else:
+    print("zaodapp.py is not installed with any app")
+    sys.exit(1)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 import zaodapp

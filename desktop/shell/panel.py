@@ -543,7 +543,7 @@ class Panel(Gtk.Window):
             power_row.pack_start(button, True, True, 0)
         box.pack_start(power_row, False, False, 0)
 
-        popover.connect("shown", self.on_quick_shown)
+        popover.connect("show", self.on_quick_shown)
         box.show_all()
         self.net_password_row.hide()
         return popover
