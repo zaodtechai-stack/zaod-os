@@ -355,8 +355,20 @@ fi
 # wireplumber and every app were refused "Permission denied" on their own config
 # and cache directories, and the console sat at "change directory failed:
 # Permission denied" for the same reason. Own the home, then prove it.
-as_root chown --recursive "$LIVE_USER:$LIVE_USER" "$ROOTFS_DIR/home/$LIVE_USER"
-as_root chmod 0755 "$ROOTFS_DIR/home/$LIVE_USER"
+# The chown has to run inside the image: the host that builds it has no
+# zaodlive account, so `chown zaodlive:zaodlive` on the rootfs path fails with
+# "invalid user" and takes the whole build down.
+as_root chroot "$ROOTFS_DIR" /usr/bin/chown --recursive \
+  "$LIVE_USER:$LIVE_USER" "/home/$LIVE_USER" \
+  || fail "the live home could not be given to $LIVE_USER"
+as_root chroot "$ROOTFS_DIR" /usr/bin/chmod 0755 "/home/$LIVE_USER"
+# Prove the ownership rather than trusting the chown above: a session that
+# cannot write $HOME is exactly the iso-74 crash.
+home_owner=$(as_root chroot "$ROOTFS_DIR" /usr/bin/stat -c "%U" "/home/$LIVE_USER")
+if [ "$home_owner" != "$LIVE_USER" ]; then
+  fail "/home/$LIVE_USER is owned by $home_owner, not $LIVE_USER"
+fi
+
 # The live account needs a password a person can actually type.
 #
 # iso-16 .. iso-24 ran `passwd --lock zaodlive`. That is invisible on the SDDM
