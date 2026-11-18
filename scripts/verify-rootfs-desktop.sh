@@ -106,7 +106,7 @@ else
   bad "only $count built-in wallpapers in /usr/share/wallpapers/zaod/collection (want 9)"
 fi
 have /usr/share/wallpapers/zaod/collection/zaod-lake-louise.jpg
-have /usr/share/doc/zaod/wallpaper-credits.md
+have /usr/share/zaod/licenses/wallpaper-credits.md
 if as_root test -x "$TARGET_ROOT/usr/local/bin/zaod-wallpaper"; then
   ok "zaod-wallpaper is installed"
 else

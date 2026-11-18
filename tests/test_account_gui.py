@@ -307,3 +307,22 @@ def test_a_short_password_is_refused_before_any_network_call(account_module):
         account.sign_in("ayesha@zaod.tech", "short")
     with pytest.raises(account_module.AccountError, match="email"):
         account.sign_in("not-an-email", "a good password")
+
+
+def test_no_zaod_document_is_installed_where_the_strip_deletes_it():
+    """The wallpaper credits vanished from the shipped image while verify went green.
+
+    ``strip_inside`` empties /usr/share/doc to save space, and the credits were
+    installed there before it ran, so the image shipped the wallpapers without
+    their attribution. Any Zaod file we rely on has to live outside that path.
+    """
+    build = (REPO / "scripts" / "build-rootfs.sh").read_text()
+    offending = [
+        line.strip()
+        for line in build.splitlines()
+        if "/usr/share/doc/zaod" in line and not line.strip().startswith("#")
+    ]
+    assert offending == [], f"these would be stripped from the image: {offending}"
+    assert "/usr/share/zaod/licenses/wallpaper-credits.md" in build
+    verify = (REPO / "scripts" / "verify-rootfs-desktop.sh").read_text()
+    assert "have /usr/share/zaod/licenses/wallpaper-credits.md" in verify

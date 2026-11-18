@@ -222,8 +222,11 @@ as_root mkdir -p "$ROOTFS_DIR/usr/share/zaod/design" \
   "$ROOTFS_DIR/usr/share/themes/Zaod"
 as_root cp -a desktop/design/. "$ROOTFS_DIR/usr/share/zaod/design/"
 as_root cp -a desktop/design/wallpapers/. "$ROOTFS_DIR/usr/share/wallpapers/zaod/"
+# /usr/share/doc is stripped later to save space, so the wallpaper attribution
+# lives with the licences that do survive: the images in the image must always
+# carry their credits.
 as_root install -D -m 0644 desktop/design/wallpapers/collection/README.md \
-  "$ROOTFS_DIR/usr/share/doc/zaod/wallpaper-credits.md"
+  "$ROOTFS_DIR/usr/share/zaod/licenses/wallpaper-credits.md"
 as_root cp -a desktop/design/gtk/. "$ROOTFS_DIR/usr/share/themes/Zaod/"
 
 # The default user template is a skel the installer copies, not a login.
@@ -327,8 +330,6 @@ if ! as_root chroot "$ROOTFS_DIR" env HOME=/root /bin/bash /tmp/test-apps-waylan
 fi
 as_root rm -f "$ROOTFS_DIR/tmp/test-apps-wayland.sh" "$ROOTFS_DIR/tmp/gio-launch-entry.py"
 
-say "verifying the desktop in the image"
-bash scripts/verify-rootfs-desktop.sh --root "$ROOTFS_DIR"
 cleanup_chroot_mounts
 trap - EXIT
 as_root chroot "$ROOTFS_DIR" /usr/bin/systemctl --root=/ enable NetworkManager.service \
@@ -404,6 +405,13 @@ as_root chroot "$ROOTFS_DIR" /bin/sh -c '
 # ---------------------------------------------------------------- 5. strip
 say "stripping documentation, manuals and unused locales"
 strip_inside
+
+say "verifying the desktop in the image (after the space strip, so this is the tree that ships)"
+bash scripts/verify-rootfs-desktop.sh --root "$ROOTFS_DIR"
+# mounts come down before anything deletes inside the tree, or a delete could
+# reach through a bind mount into the build host
+cleanup_chroot_mounts
+trap - EXIT
 
 # ---------------------------------------------------------------- 6. remove apt/dpkg
 say "removing the Debian package manager"

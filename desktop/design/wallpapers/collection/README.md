@@ -5,7 +5,7 @@ Two sets ship in the image:
 * **Photographs** downloaded for the OS from Wikimedia Commons. Each is cropped to
   7680x4320 (8K UHD) from a native 8K-class original, so the detail is real.
   These are licensed CC BY-SA or public domain; the attribution below is required
-  and is also installed at /usr/share/doc/zaod/wallpaper-credits.md.
+  and is also installed at /usr/share/zaod/licenses/wallpaper-credits.md.
 * **Owner set** (`zaod-night-pier`, `zaod-ascension`, `zaod-purple-sunset`,
   `zaod-torii-blossom`, `zaod-alpine-lake`, `zaod-sunset-cabin`, `zaod-golden-road`,
   `zaod-starlit-tree`, `zaod-gold-folds`), supplied by the Zaod OS owner. The
